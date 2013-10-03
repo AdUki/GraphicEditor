@@ -23,6 +23,7 @@ Files = {
 ---------------------------------------------------------
 -- Opens file in location
 -- @param path (string) path to file
+-- @return opened file reference
 function openFile(path)
     -- TODO: pridat warning ked je subor read-only
     local file = assert(io.open(path, "r"))
@@ -41,6 +42,8 @@ function openFile(path)
     dump(filepath, 'Extension: ' .. fileExtension, '\n\n')
     dump(text, '\n\n')
     dumpAST(Files[filepath].tree)
+
+    return Files[filepath]
 end
 
 ---------------------------------------------------------
@@ -150,28 +153,52 @@ end
 
 ------------------------------------------------------------------------------------------------------------------ ABSTRACT SYNTAX TREE HANDLING
 
+local globalCallbackCounter = 0
+
+local astMetatable = {
+    __call = function(table, arg) 
+        return table.capturePattern
+    end
+}
+    
 ---------------------------------------------------------
 -- Produces AST leaf capture from defined lpeg pattern
 -- NO CHILDREN
+-- @param var table with fields name(string) and pattern(lpeg.pattern)
+-- @return leaf table
 function leaf(var)
-    dump('LEAF:', var, var.name, var.pattern, '\n')
-    return lpeg.Ct( lpeg.Cg(lpeg.Cc(var.name), 't') * lpeg.Cg(var.pattern, 'v') )
+    dump(var.name, '\n')
+
+    assert (type(var) == 'table',                "Table expected!")
+    assert (type(var.name) == 'string',          "Must have 'name' field")
+    assert (lpeg.type(var.pattern) == 'pattern', "Must have 'pattern' field")
+    assert (var.capturePattern == nil,           "Index 'capturePattern' is system reserved!")
+    assert (var.value == nil,                    "Index 'value' is system reserved!")
+
+    var.capturePattern = lpeg.Ct( lpeg.Cg(lpeg.Cc(var), 'table') * lpeg.Cg(var.pattern, 'value') )
+    
+    setmetatable(var, astMetatable)
+    return var
 end
 
 ---------------------------------------------------------
 -- Produces AST node capture from defined lpeg pattern
 -- HAS CHILDREN
+-- @param var table with fields name(string) and pattern(lpeg.pattern)
+-- @return node table
 function node(var)
-    dump('LEAF:', var, var.name, var.pattern, '\n')
-    return lpeg.Ct( lpeg.Cg(lpeg.Cc(var.name), 't') * lpeg.Cg(lpeg.Ct(var.pattern), 'v') )
-end
+    dump(var.name, '\n')
 
----------------------------------------------------------
--- Produces error AST node
-function error(var)
-    dump('ERROR:', var, var.name, var.pattern, '\n')
-    -- return lpeg.Ct( lpeg.Cg(lpeg.Cc('Error: ' .. var.name), 't') * lpeg.Cg(lpeg.C(var.pattern), 'v') )
-    return lpeg.Ct( lpeg.Cg(lpeg.Cc('Error'), 't') * lpeg.Cg(lpeg.Cc(var.name), 'd') * lpeg.Cg(lpeg.C(var.pattern), 'v') )
+    assert (type(var) == 'table',                "Table expected!")
+    assert (type(var.name) == 'string',          "Must have 'name' field")
+    assert (lpeg.type(var.pattern) == 'pattern', "Must have 'pattern' field")
+    assert (var.capturePattern == nil,           "Index 'capturePattern' is system reserved!")
+    assert (var.value == nil,                    "Index 'value' is system reserved!")
+    
+    var.capturePattern = lpeg.Ct( lpeg.Cg(lpeg.Cc(var), 'table') * lpeg.Cg(lpeg.Ct(var.pattern), 'value') )
+
+    setmetatable(var, astMetatable)
+    return var
 end
 
 ---------------------------------------------------------
@@ -179,34 +206,83 @@ end
 -- @param ast grouped tables that are ast tree
 function dumpAST(ast)
     function tprint (tbl, indent)
-      suffix = suffix or ''
+        for key, node in ipairs(tbl) do
+            dump(string.rep(" ", indent) .. '[' .. key .. '] t=')
+            dump('n=' .. node.table.name)
 
-      for k, v in pairs(tbl) do
-        if type(v) == "table" then
-            if k ~= 'v' then
-                dump(string.rep(" ", indent) .. '[' .. k .. '] t=')
+            if type(node.value) == 'table' then
+                dump('\n')
+                tprint(node.value, indent + 3)
             else
-                dump'\tv=table\n'
-            end
-            tprint(v, indent + 3)
-        else
-            if k == 't' then
-                dump(v)
-                if type(tbl[k].v) == 'table' then 
-                    dump'\n' 
-                end
-            else
-                dump('\t' .. k .. '=\'' .. v .. '\'\n')
+                dump('\tv=' .. node.value .. '\n')
             end
         end
-      end
     end
     tprint(ast, 0)
     dump'\n'
 end
 
-loadGrammars()
-openFile'input.arithmetic'
+---------------------------------------------------------
+-- Prints AST tree
+-- @param ast grouped tables that are ast tree
+function crawlAST(ast)
+    
+    globalCallbackCounter = 0
 
+    local currentTextIndex = 0;
+    local indexPath = {}
+    local reverseIndexPath = {}
+
+    ---------------------------------------------------------
+    -- 
+    -- @param node
+    -- @param indexPath
+    -- @param reverseIndexPath
+    -- @param startTextIndex
+    -- @param endTextIndex
+    local function ASTnodeCallback(node, indexPath, reverseIndexPath, startTextIndex, endTextIndex)
+        globalCallbackCounter = globalCallbackCounter + 1
+        -- TODO: link with Qt
+        dump(tostring(globalCallbackCounter) .. ':', startTextIndex, endTextIndex, indexPath, reverseIndexPath, '\n')
+    end
+
+    ---------------------------------------------------------
+    -- Recursive AST search function with callback ASTnodeCallback
+    -- @param tbl AST element
+    local function search(tbl)
+        local size = #tbl
+        local startTextIndex = currentTextIndex
+
+        for key, node in ipairs(tbl) do
+            -- Insert current node to path
+            indexPath[#indexPath + 1] = tostring(key)
+            reverseIndexPath[#reverseIndexPath + 1] = tostring(size - key + 1)
+                
+            if type(node.value) == 'table' then
+                -- We must go deeper!
+                search(node.value, indexPath)
+            else
+                currentTextIndex = currentTextIndex + node.value:len()
+            end
+
+            ASTnodeCallback(node.table, 
+                table.concat(indexPath, ':'), table.concat(reverseIndexPath, ':'), 
+                startTextIndex, currentTextIndex)
+
+            startTextIndex = currentTextIndex
+
+            -- Pop current node from path
+            indexPath[#indexPath] = nil
+            reverseIndexPath[#reverseIndexPath] = nil
+        end
+    end
+
+    search(ast)
+end
+
+------------------------------------------------------------------------------------------------------------------ TESTING COMMANDS
+loadGrammars()
+openedFile = openFile'../test input/input.arithmetic'
+crawlAST(openedFile.tree)
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";

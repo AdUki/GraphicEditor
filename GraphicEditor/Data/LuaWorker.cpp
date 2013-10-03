@@ -75,18 +75,8 @@ void LuaWorker::protectedCall()
 
     emit started(_thread);
 
-    if (_terminateEnabled) {
-        luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE|LUAJIT_MODE_OFF);
-        lua_sethook(L, &escapeThread, LUA_MASKCOUNT, 100000);
-    }
-
     int error = luaL_loadbuffer(L, _code.data(), _code.length(), "pcall") ||
                 lua_pcall(L, 0, 0, 0);
-
-    if (_terminateEnabled) {
-        lua_sethook(L, 0, 0, 0);
-        luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE|LUAJIT_MODE_ON);
-    }
 
     Interpreter::getInstance()->getWorkerMutex()->unlock();
 

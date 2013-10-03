@@ -28,72 +28,75 @@ local space = lpeg.S(" \t")^0
 ---------------------------------------------------------
 -- Nodes
 
-local newline = {
+local newline = leaf{
 	name = 'newline', 
 	pattern = lpeg.S'\n\r',
 }
 
-local left = {
+local left = leaf{
 	name = 'left', 
 	pattern = space * lpeg.P'(' * space,
 }
-local right = {
+local right = leaf{
 	name = 'right', 
 	pattern = space * lpeg.P')' * space,
 }
 
-local number = {
+local number = leaf{
 	name = 'number', 
 	pattern = space * lpeg.R'09'^1 * (lpeg.P'.' * lpeg.R'09'^1)^-1,
 }
-local variable = {
+local variable = leaf{
 	name = 'variable', 
 	pattern = space * (lpeg.R'az' + lpeg.R'AZ')^1,
 }
 
-local unaryOp = {
+local unaryOp = leaf{
 	name = 'unaryOp', 
 	pattern = space * (plus + minus) * space,
 }
-local binaryOp = {
+local binaryOp = leaf{
 	name = 'binaryOp', 
 	pattern = space * (plus + minus + multi + fracal + power + indice) * space,
 }
 
-local logical = {
+local logical = leaf{
 	name = 'logical',
 	pattern = space * (lt + gt + eq + lte + gte + nlt + ngt + neq + nlte + ngte) * space,
 }
 
-local brackets = {
+---------------------------------------------------------
+-- Node
+
+local brackets = node{
 	name = 'brackets',
-	pattern = node(left) * V'UnaryExp' * node(right)
+	pattern = left() * V'UnaryExp' * right()
 }
 
-local equation = {
+local equation = node{
 	name = 'equation',
-	pattern = V'UnaryExp' * (node(logical) * V'UnaryExp')^-1
+	pattern = V'UnaryExp' * (logical() * V'UnaryExp')^-1
 }
 
 ---------------------------------------------------------
 -- Errors
 
-local invalidEquation = {
-	name = 'invalid equation',
+local invalidEquation = leaf{
+	name = 'Invalid equation',
 	pattern = (lpeg.P(1) - lpeg.P'\n')^0
 }
 
-local invalidTerm = {
+local invalidTerm = leaf{
 	name = 'Invalid term',
 	pattern = (lpeg.P(1) - V'Term')^0
 }
 
-local invalidOperator = {
+local invalidOperator = leaf{
 	name = 'Invalid operator',
 	pattern = (lpeg.P(1) - V'Operator')^0
 }
 
-local invalidLogical = {
+local invalidLogical = leaf{
 	name = 'Invalid logical',
 	pattern = logical.pattern
 }
@@ -103,19 +106,19 @@ local invalidLogical = {
 
 G = lpeg.Ct({"Start",
 
-	Start = leaf(newline)^0 * V'PEquation' * ( leaf(newline)^1 * V'PEquation' )^0,
+	Start = newline()^0 * V'PEquation' * ( newline()^1 * V'PEquation' )^0,
 
-	PEquation = V'Equation' * error(invalidEquation), -- TODO: skusit zistit ako spravit aby nematchovalo empty string
-	Equation = node(equation) * ( error(invalidLogical) * V'UnaryExp')^0,
+	PEquation = V'Equation' * invalidEquation(), -- TODO: skusit zistit ako spravit aby nematchovalo empty string
+	Equation = equation() * ( invalidLogical() * V'UnaryExp')^0,
 
-	UnaryExp = leaf(unaryOp)^-1 * V'Exp',
+	UnaryExp = unaryOp()^-1 * V'Exp',
 	Exp = V"PTerm" * ( V'Operator' * V"PTerm" )^0,
 
-	PTerm = V'Term' + ( error(invalidTerm) * V'Term'),
-	Term = node(brackets) + leaf(number) + leaf(variable),
+	PTerm = V'Term' + ( invalidTerm() * V'Term'),
+	Term = brackets() + number() + variable(),
 
-	POperator = V'Operator' + ( error(invalidOperator) * V'Operator'), -- TODO: zistit ako parsnut chybu o zlom operatore
-	Operator = leaf(binaryOp) ,
+	POperator = V'Operator' + ( invalidOperator() * V'Operator'), -- TODO: zistit ako parsnut chybu o zlom operatore
+	Operator = binaryOp() ,
 })
 
 ---------------------------------------------------------
