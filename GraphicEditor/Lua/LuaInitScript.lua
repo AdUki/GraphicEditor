@@ -121,7 +121,7 @@ function loadGrammars()
         end
     end
 
-    if count == 1 then
+    if count == 0 then
         dump "Warning: No grammars loaded!"
     end
 end
@@ -541,7 +541,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------------ TESTING COMMANDS
 
---[[
+--[[ delete for testing
 
 loadGrammars()
 
@@ -556,14 +556,15 @@ fullpath, openedFile = openFile'../test input/input.arithmetic'
 openedFile.tree = reparseFile(fullpath, [[((1) + 2) + (a + (100 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + 8 + (3 + (4))))))
 200  + 200
 ]]
+
+--[[ delete for testing
+
 ) --> add in the middle
 -- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the beginning with nodes
 -- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the end
 
 dump'\n\n'
 --dumpAST(openedFile.tree)
-
 --]]
-
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";
