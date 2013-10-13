@@ -1,6 +1,7 @@
 #pragma once //"
 const char* luaInitScript = R"( -- LONG STRING BEGIN
 
+
 -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 io.stdout:setvbuf 'no'
 
@@ -13,17 +14,20 @@ lfs = require 'lfs'
 
 ---------------------------------------------------------
 -- Opened files table, indexed with full file paths
--- @param extension extension of file whitout dot
+-- @param grammar
+-- @param extension file suffix
 -- @param tree actual AST
 Files = {
     extension = nil,
+    grammar = nil,
     tree = nil,
 }
 
 ---------------------------------------------------------
 -- Opens file in location
 -- @param path (string) path to file
--- @return opened file reference
+-- @return[1] fullpath
+-- @return[2] opened file reference
 function openFile(path)
     -- TODO: pridat warning ked je subor read-only
     local file = assert(io.open(path, "r"))
@@ -33,17 +37,15 @@ function openFile(path)
     local workDir = lfs.currentdir()
     local filepath = lfs.fullpath(path)
     local fileExtension = filepath:match('.*[%.\\/](.*)$') -- get extension, relies that '\' sign cannot be in extension
+    local fileGrammar = assert(Extensions[fileExtension], 'No grammar for extension'.. fileExtension .. 'defined').grammar
 
     Files[filepath] = {
         extension = fileExtension,
-        tree = Extensions[assert(fileExtension, 'No grammar for extension'.. fileExtension .. 'defined')].grammar:match(text)
+        grammar = fileGrammar,
+        tree = fileGrammar:match(text)
     }
-    
-    dump(filepath, 'Extension: ' .. fileExtension, '\n\n')
-    dump(text, '\n\n')
-    dumpAST(Files[filepath].tree)
 
-    return Files[filepath]
+    return filepath, Files[filepath]
 end
 
 ---------------------------------------------------------
@@ -207,14 +209,14 @@ end
 function dumpAST(ast)
     function tprint (tbl, indent)
         for key, node in ipairs(tbl) do
-            dump(string.rep(" ", indent) .. '[' .. key .. '] t=')
-            dump('n=' .. node.table.name)
+            dump(string.rep(" ", indent) .. '[' .. key .. '] s=' .. tostring(node.startIndex) ..' e=' .. tostring(node.endIndex))
+            dump(' n=' .. node.table.name)
 
             if type(node.value) == 'table' then
                 dump('\n')
                 tprint(node.value, indent + 3)
             else
-                dump('\tv=' .. node.value .. '\n')
+                dump('  v=' .. node.value .. '\n')
             end
         end
     end
@@ -252,8 +254,11 @@ function crawlAST(ast)
     local function search(tbl)
         local size = #tbl
         local startTextIndex = currentTextIndex
+        local currentParent = tbl
 
         for key, node in ipairs(tbl) do
+            node.parent = currentParent
+            
             -- Insert current node to path
             indexPath[#indexPath + 1] = tostring(key)
             reverseIndexPath[#reverseIndexPath + 1] = tostring(size - key + 1)
@@ -280,9 +285,285 @@ function crawlAST(ast)
     search(ast)
 end
 
+
+---------------------------------------------------------
+local function deleteItemCallback(node)
+end
+
+---------------------------------------------------------
+local function addItemCallback(node)
+end
+
+-- Indicates number of reparseFile
+local parseCycle = 0
+
+---------------------------------------------------------
+-- Recursive AST search function with callback ASTnodeCallback
+-- @param filepath
+-- @param text
+function reparseFile(filepath, text)
+
+    local function compareNodes(node1, node2)
+        if node1 == nil or node2 == nil then 
+            return false 
+        end
+        return node1.table.name == node2.table.name
+    end
+
+    local function findMaximum(tbl1, tbl2)
+        if tbl1 == nil or type(tbl1.value) ~= 'table' then return #tbl2.value end
+        if tbl2 == nil or type(tbl2.value) ~= 'table' then return #tbl1.value end
+        return #tbl1.value > #tbl2.value and #tbl1.value or #tbl2.value
+    end
+
+    local function checkForEnd(tbl1, tbl2)
+        -- Check if it is visited node
+        if  tbl1 == nil and tbl2 == nil or
+            tbl1 and tbl1.visit == parseCycle and 
+            tbl2 and tbl2.visit == parseCycle
+        then
+            dump 'END OF TREE!\n'
+            return true
+        end
+        return false
+    end
+
+    local function compareFront(old, new, parent)
+
+        -- Check if it is visited node
+        if  checkForEnd(old, new) then 
+            finishFront = true
+            return
+        end
+        if old and old.visit == parseCycle then old = nil end
+        if new and new.visit == parseCycle then new = nil end
+
+        -- Compare nodes
+        if compareNodes(old, new) then
+
+            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
+                dump('UPDATE: ' .. old.table.name .. ' ' .. old.value .. ' to ' .. new.value .. '\n')
+            end
+
+            -- Copy values from old
+            -- TODO: move references to new
+
+        else
+            
+            -- If we havent search back then do it
+            if finishFront == false then
+                finishFront = true
+                dump 'START SEARCH BACKWARD!\n'
+                -- Let compareBack() work his job
+                coroutine.yield()
+                -- Check if back search didnt marked our node
+                if  checkForEnd(old, new) then return end
+                if old and old.visit == parseCycle then old = nil end
+                if new and new.visit == parseCycle then new = nil end
+            end
+
+            -- Remove old nodes
+            if old ~= nil then
+                dump('REMOVE: ' .. old.table.name .. ' ' .. tostring(old.value) .. '\n')
+                deleteNodesTable[#deleteNodesTable + 1] = old
+            end
+            -- Add new nodes
+            if new ~= nil then
+                dump('ADD: ' .. new.table.name .. ' ' .. tostring(new.value) .. '\n')
+            end
+
+        end
+
+        -- Mark start index
+        if new then 
+            new.startIndex = currentTextIndex 
+        end
+
+        -- Check if it is node with table
+        if  (old and type(old.value) == 'table') or 
+            (new and type(new.value) == 'table') then
+            
+            -- Find maximum
+            local max = findMaximum(old, new)
+            
+            -- Recursive search
+            for index = 1, max, 1 do
+                compareFront(old and old.value[index],new and new.value[index], old, index)
+                if finishFront then return end
+            end
+
+        end
+
+        -- Calculate index and mark end index and visit flag
+        if old then 
+            old.visit = parseCycle 
+        end
+        if new then
+            
+            if type(new.value) ~= 'table' then
+                currentTextIndex = currentTextIndex + new.value:len()
+            end
+            new.endIndex = currentTextIndex
+            new.visit = parseCycle
+
+        end
+    end
+
+    local function compareBack(old, new, parent)
+
+        -- Check if it is visited node
+        if  checkForEnd(old, new) then 
+            finishBack = true
+            return 
+        end
+
+        if old and old.visit == parseCycle then old = nil end
+        if new and new.visit == parseCycle then new = nil end
+
+        -- Compare nodes
+        if compareNodes(old, new) then
+
+            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
+                dump('UPDATE: ' .. old.table.name .. ' ' .. old.value .. ' to ' .. new.value .. '\n')
+            end
+            -- Copy values from old
+            -- TODO: move references to new
+
+        else
+
+            -- Remove old nodes
+            if old ~= nil then
+                dump('REMOVE: ' .. old.table.name .. ' ' .. tostring(old.value) .. '\n')
+                deleteNodesTable[#deleteNodesTable + 1] = old
+            end
+            -- Add new nodes
+            if new ~= nil then
+                dump('ADD: ' .. new.table.name .. ' ' .. tostring(new.value) .. '\n')
+            end
+
+        end
+
+        -- Mark that we were here and end index
+        if new then 
+            new.endIndex = currentTextBackIndex 
+        end
+
+        -- Check if it is node or leaf
+        if old and type(old.value) == 'table' or 
+           new and type(new.value) == 'table' then
+            
+            -- Find maximum
+            local max = findMaximum(old, new)
+            local oldSize = old and #old.value
+            local newSize = new and #new.value
+
+            -- Recursive search
+            for index = 1, max, 1 do
+                compareBack(old and old.value[oldSize - index + 1], new and new.value[newSize - index + 1], old)
+                if finishBack then return end
+            end
+
+        end
+
+        -- Calculate index and mark start index
+        if new then
+            
+            if type(new.value) ~= 'table' then
+                currentTextIndex = currentTextIndex + new.value:len()
+            end
+            new.startIndex = currentTextBackIndex
+
+        end
+
+
+        -- Calculate index and mark end index and visit flag
+        if old then 
+            old.visit = parseCycle 
+        end
+        if new then
+            
+            if type(new.value) ~= 'table' then
+                currentTextBackIndex = currentTextBackIndex - new.value:len()
+            end
+            new.startIndex = currentTextBackIndex 
+            new.visit =parseCycle
+
+        end
+
+    end
+
+    -- local combineAST = coroutine.create( function(old, new)
+    --     -- cycle trees from front and back
+
+    --     -- deleteItemCallback()
+    --     -- addItemCallback()
+    -- end)
+
+    parseCycle = parseCycle + 1
+
+    local file = assert(Files[filepath], 'No opened file with ' .. filepath)
+    local oldTree = file.tree
+    local newTree = file.grammar:match(text)
+
+    finishFront = false
+    finishBack = false
+
+    currentTextIndex = 0
+    currentTextBackIndex = #text
+
+    dump('\n\nText lenght is ' .. tostring(currentTextBackIndex) .. '\n')
+
+    deleteNodesTable = {}
+    
+    assert(oldTree and newTree)
+
+    dump'\n\nOLD TREE\n'
+    dumpAST(oldTree)
+
+    dump '\n\nNEW TREE\n'
+    dumpAST(newTree)
+    
+    local compareFrontCoroutine = coroutine.create(compareFront)
+    local compareBackCoroutine = coroutine.create(compareBack)
+
+    local rootOld = { table = { name='root' }, value = oldTree }
+    local rootNew = { table = { name='root' }, value = newTree }
+
+    coroutine.resume(compareFrontCoroutine, rootOld, rootNew)
+    
+    compareBack(rootOld, rootNew)
+    dump'SEARCH BACKWARD ENDED!\n\n'
+
+    coroutine.resume(compareFrontCoroutine)
+
+    return newTree
+end
+
 ------------------------------------------------------------------------------------------------------------------ TESTING COMMANDS
+
+--[[
+
 loadGrammars()
-openedFile = openFile'../test input/input.arithmetic'
-crawlAST(openedFile.tree)
+
+local fullpath, openedfile
+fullpath, openedFile = openFile'../test input/input.arithmetic'
+
+-- crawlAST(openedFile.tree)
+
+
+-- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add nothing
+-- openedFile.tree = reparseFile(fullpath, 'aaa + (1 + (2 + 3) + 4)') --> add to the beginning
+openedFile.tree = reparseFile(fullpath, [[((1) + 2) + (a + (100 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + 8 + (3 + (4))))))
+200  + 200
+]]
+) --> add in the middle
+-- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the beginning with nodes
+-- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the end
+
+dump'\n\n'
+--dumpAST(openedFile.tree)
+
+--]]
+
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";
