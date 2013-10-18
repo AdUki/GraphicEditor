@@ -22,13 +22,7 @@ SOURCES  += \
     Data/Interpreter.cpp \
     Data/LuaWorker.cpp \
     Lua/LuaBindings.cpp \
-    Ui/Grids/VerticalGrid.cpp \
-    Ui/Grids/HorizontalGrid.cpp \
-    Ui/Grids/BaseGrid.cpp \
-    Ui/Items/TextItem.cpp \
-    Ui/Items/ImageItem.cpp \
-    Ui/Items/BaseItem.cpp \
-    Ui/Root.cpp
+    baseitem.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -37,13 +31,7 @@ HEADERS  += \
     Data/LuaWorker.h \
     Lua/LuaBindings.h \
     Lua/LuaInitScript.lua \
-    Ui/Grids/VerticalGrid.h \
-    Ui/Grids/HorizontalGrid.h \
-    Ui/Grids/BaseGrid.h \
-    Ui/Items/TextItem.h \
-    Ui/Items/ImageItem.h \
-    Ui/Items/BaseItem.h \
-    Ui/Root.h
+    baseitem.h
 
 FORMS    += \
     mainwindow.ui

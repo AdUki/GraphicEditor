@@ -1,5 +1,4 @@
-#ifndef CONSOLE_H
-#define CONSOLE_H
+#pragma once
 
 #include <QTextEdit>
 #include <QBuffer>
@@ -54,5 +53,3 @@ private:
     void writeCommandSign();
     void pasteInput(const QString& input, int commandCursorPosition);
 };
-
-#endif // CONSOLE_H

@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 
+class QGraphicsScene;
+
 namespace Ui {
 class MainWindow;
 }
@@ -16,9 +18,12 @@ public:
     ~MainWindow();
     
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *UI;
 
     void createDockWidgets();
+    void createScene();
+
+    void testCanvas();
 };
 
 #endif // MAINWINDOW_H

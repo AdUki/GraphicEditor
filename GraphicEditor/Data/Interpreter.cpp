@@ -24,8 +24,6 @@ Interpreter::Interpreter(QObject *parent)
     luaL_openlibs(_internalState);
     createBindings(_internalState);
 
-    qDebug() << luaInitScript;
-
     LuaWorker* worker = new LuaWorker(luaInitScript);
     connect(worker, SIGNAL(failed(QByteArray)), this, SLOT(errorLoadConfig(QByteArray)));
     connect(worker, SIGNAL(finished()), this, SLOT(finishedLoadConfig()));

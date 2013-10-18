@@ -1,7 +1,6 @@
 #pragma once //"
 const char* luaInitScript = R"( -- LONG STRING BEGIN
 
-
 -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 io.stdout:setvbuf 'no'
 
@@ -541,30 +540,27 @@ end
 
 ------------------------------------------------------------------------------------------------------------------ TESTING COMMANDS
 
---[[ delete for testing
-
 loadGrammars()
 
-local fullpath, openedfile
-fullpath, openedFile = openFile'../test input/input.arithmetic'
+--local fullpath, openedfile
+--fullpath, openedFile = openFile'../test input/input.arithmetic'
 
 -- crawlAST(openedFile.tree)
 
 
 -- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add nothing
 -- openedFile.tree = reparseFile(fullpath, 'aaa + (1 + (2 + 3) + 4)') --> add to the beginning
-openedFile.tree = reparseFile(fullpath, [[((1) + 2) + (a + (100 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + 8 + (3 + (4))))))
-200  + 200
-]]
+--openedFile.tree = reparseFile(fullpath, [[((1) + 2) + (a + (100 + 10 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + (3 + (4))))))
+--]]) --> add in the middle
 
---[[ delete for testing
+--openedFile.tree = reparseFile(fullpath, [[a + ((1) + 2) + (a + (100 + 10 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + (3 + (4))))))
+--]]) --> add in the middle
 
-) --> add in the middle
 -- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the beginning with nodes
 -- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the end
 
-dump'\n\n'
+--dump'\n\n'
 --dumpAST(openedFile.tree)
---]]
+
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";
