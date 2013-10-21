@@ -10,8 +10,7 @@
 
 #include "Lua/LuaInitScript.lua"
 #include "Lua/LuaBindings.h"
-
-#include "./LuaWorker.h"
+#include "Lua/LuaWorker.h"
 
 ////////////////////////////////////////////////////////////////
 Interpreter::Interpreter(QObject *parent)
@@ -49,18 +48,6 @@ Interpreter* Interpreter::getInstance()
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeUserCall(const QByteArray& call)
-{
-    LuaWorker* worker = new LuaWorker(call);
-    worker->setTerminateEnabled();
-
-    connect(worker, SIGNAL(failed(QByteArray)), this, SIGNAL(emitError(QByteArray)));
-    connect(worker, SIGNAL(finished()), this, SIGNAL(workDone()));
-
-    worker->startProtected();
-}
-
-////////////////////////////////////////////////////////////////
 void Interpreter::makeProtectedCall(const QByteArray& call)
 {
     LuaWorker* worker = new LuaWorker(call);
@@ -87,9 +74,7 @@ void Interpreter::stopWork()
 {
     qDebug() << "Terminate message recieved!";
 
-    TerminateMutex->lock();
-    _TERMINATE_LUA_THREAD = true;
-    TerminateMutex->unlock();
+    // TODO: terminate
 }
 
 ////////////////////////////////////////////////////////////////

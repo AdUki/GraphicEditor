@@ -3,8 +3,9 @@
 
 #include <QObject>
 
-class QMutex;
 class lua_State;
+class QMutex;
+class TextFile;
 
 class Interpreter : public QObject
 {
@@ -29,9 +30,9 @@ signals:
     void stopRunningWorkers();
 
 public slots:
-    void makeUserCall(const QByteArray& call);
     void makeProtectedCall(const QByteArray& call);
     void makeCall(const QByteArray& call);
+
     void stopWork();
 
 private slots:

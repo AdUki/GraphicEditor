@@ -1,11 +1,8 @@
-#ifndef WORKER_H
-#define WORKER_H
+#pragma once
 
 #include <QObject>
 
 class lua_State;
-
-extern bool _TERMINATE_LUA_THREAD;
 
 class LuaWorker : public QObject
 {
@@ -17,8 +14,6 @@ public:
 
     void startProtected();
     void start();
-
-    void setTerminateEnabled() { _terminateEnabled = true; }
 
 private slots:
     void protectedCall();
@@ -33,7 +28,4 @@ signals:
 private:
     QByteArray _code;
     QThread* _thread;
-    bool _terminateEnabled;
 };
-
-#endif // WORKER_H

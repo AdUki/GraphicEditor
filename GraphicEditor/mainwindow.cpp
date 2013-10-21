@@ -28,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     createScene();
     createDockWidgets();
+    createConnections();
 
 //    testCanvas();
 //    testFileManager();
@@ -79,6 +80,18 @@ void MainWindow::createDockWidgets()
     dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     dock->setWidget(console);
     addDockWidget(Qt::BottomDockWidgetArea, dock);
+}
+
+////////////////////////////////////////////////////////////////
+void MainWindow::createConnections()
+{
+    connect(UI->reparseTextButton, SIGNAL(clicked()), this, SLOT(reparsePlainTextEdit()));
+}
+
+////////////////////////////////////////////////////////////////
+void MainWindow::reparsePlainTextEdit()
+{
+    // TODO: implementovat reparse pre testovacie ucely
 }
 
 ////////////////////////////////////////////////////////////////

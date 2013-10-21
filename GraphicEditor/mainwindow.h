@@ -18,11 +18,15 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     
+private slots:
+    void reparsePlainTextEdit();
+
 private:
     Ui::MainWindow *UI;
 
     void createDockWidgets();
     void createScene();
+    void createConnections();
 
     void testCanvas();
     void testFileManager();

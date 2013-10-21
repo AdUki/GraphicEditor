@@ -6,6 +6,7 @@
 #include <QTextStream>
 
 #include "./FileManager.h"
+#include "./Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
 TextFile::TextFile(QObject *parent)
@@ -14,11 +15,10 @@ TextFile::TextFile(QObject *parent)
     , _modified(false)
 {
     FileManager::getInstance()->addFile(this);
+    // TODO: implement this
+//    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
 
-    QString t;
-    t.sprintf("%8p", this); // QString::sprintf adds 0x prefix
-
-    qDebug() << QString("File " + t + " created");
+    qDebug() << QString("File " + thisToString() + " created");
 }
 
 ////////////////////////////////////////////////////////////////
@@ -31,10 +31,7 @@ TextFile::TextFile(const QString& filename, QObject *parent)
 ////////////////////////////////////////////////////////////////
 TextFile::~TextFile()
 {
-    QString t;
-    t.sprintf("%8p", this); // QString::sprintf adds 0x prefix
-
-    qDebug() << QString("File " + t + " closed");
+    qDebug() << "File " + thisToString() + " closed";
 }
 
 ////////////////////////////////////////////////////////////////
@@ -140,4 +137,20 @@ void TextFile::close()
     delete _file;
 
     emit closed();
+}
+
+////////////////////////////////////////////////////////////////
+void TextFile::reparseFile() const
+{
+    //TODO: implement this
+//    Interpreter::getInstance()->makeReparseFileCall(thisToString(), _text);
+}
+
+////////////////////////////////////////////////////////////////
+QString TextFile::thisToString()
+{
+    if (_pointer.isEmpty())
+        _pointer.sprintf("%p", this);
+
+    return _pointer;
 }

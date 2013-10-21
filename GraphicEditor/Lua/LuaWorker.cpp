@@ -6,30 +6,12 @@
 #include <QThread>
 #include <QDebug>
 
-#include "./Interpreter.h"
-
-bool _TERMINATE_LUA_THREAD = false;
-
-////////////////////////////////////////////////////////////////
-void escapeThread(lua_State *L, lua_Debug *ar)
-{
-    qDebug() << "Check for escape...";
-
-    Interpreter::getInstance()->TerminateMutex->lock();
-    if (_TERMINATE_LUA_THREAD) {
-        qDebug() << "Exited";
-
-        luaL_dostring(L, "os.exit()");
-        _TERMINATE_LUA_THREAD = false;
-    }
-    Interpreter::getInstance()->TerminateMutex->unlock();
-}
+#include "Data/Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
 LuaWorker::LuaWorker(const QByteArray& code)
 : QObject()
 , _code(code)
-, _terminateEnabled(false)
 {
     _thread = new QThread();
     moveToThread(_thread);
