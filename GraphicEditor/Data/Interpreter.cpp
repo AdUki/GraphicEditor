@@ -27,7 +27,10 @@ Interpreter::Interpreter(QObject *parent)
     LuaWorker* worker = new LuaWorker(luaInitScript);
     connect(worker, SIGNAL(failed(QByteArray)), this, SLOT(errorLoadConfig(QByteArray)));
     connect(worker, SIGNAL(finished()), this, SLOT(finishedLoadConfig()));
+    connect(worker, SIGNAL(finished()), this, SIGNAL(workDone()));
     worker->startProtected();
+
+    qDebug() << "Lua interpreter started.\n";
 }
 
 ////////////////////////////////////////////////////////////////
@@ -40,6 +43,7 @@ Interpreter::~Interpreter()
 ////////////////////////////////////////////////////////////////
 Interpreter* Interpreter::getInstance()
 {
+    // TODO: zavolat destruktor nakonci
     static Interpreter* instance = new Interpreter();
     return instance;
 }
@@ -91,7 +95,7 @@ void Interpreter::stopWork()
 ////////////////////////////////////////////////////////////////
 void Interpreter::finishedLoadConfig()
 {
-    qDebug() << "Lua interpreter started.";
+    qDebug() << "Successfully loaded config.\n";
 }
 
 ////////////////////////////////////////////////////////////////

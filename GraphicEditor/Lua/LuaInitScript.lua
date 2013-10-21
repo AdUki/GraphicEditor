@@ -3,6 +3,8 @@ const char* luaInitScript = R"( -- LONG STRING BEGIN
 
 -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 io.stdout:setvbuf 'no'
+dump 'Initialization script started\n'
+dump '---------------------------------------------------------\n'
 
 ---------------------------------------------------------
 -- Includes
@@ -23,7 +25,30 @@ Files = {
 }
 
 ---------------------------------------------------------
--- Opens file in location
+-- Directly register file
+-- @param name file indentifier
+-- @param fileExtension
+-- @param text
+-- @return file reference
+function registerFile(name, extension, text)
+    
+    text = text or ""
+
+    local fileGrammar = assert(Extensions[extension], 'No grammar for extension "'.. extension .. '" defined').grammar
+
+    Files[name] = {
+        extension = extension,
+        grammar = fileGrammar,
+        tree = fileGrammar:match(text)
+    }
+
+    dump ('File "' .. name .. '" registered\n')
+
+    return Files[name]
+end
+
+---------------------------------------------------------
+-- Opens file in location and register it with it fullpath
 -- @param path (string) path to file
 -- @return[1] fullpath
 -- @return[2] opened file reference
@@ -36,13 +61,8 @@ function openFile(path)
     local workDir = lfs.currentdir()
     local filepath = lfs.fullpath(path)
     local fileExtension = filepath:match('.*[%.\\/](.*)$') -- get extension, relies that '\' sign cannot be in extension
-    local fileGrammar = assert(Extensions[fileExtension], 'No grammar for extension'.. fileExtension .. 'defined').grammar
 
-    Files[filepath] = {
-        extension = fileExtension,
-        grammar = fileGrammar,
-        tree = fileGrammar:match(text)
-    }
+    registerFile(filePath, fileExtension, text)
 
     return filepath, Files[filepath]
 end
@@ -79,11 +99,13 @@ function saveAll()
 end
 
 ---------------------------------------------------------
--- Closes file
+-- Closes / unregisters file
 -- @param path (string) path to file
 function closeFile(path)
     assert(Files[path], path .. ': File is not open!')
     Files[path] = nil
+
+    dump ('File "' .. path .. '" closed\n')
 end
 
 ------------------------------------------------------------------------------------------------------------------ GRAMMARS HANDLING
@@ -121,7 +143,7 @@ function loadGrammars()
     end
 
     if count == 0 then
-        dump "Warning: No grammars loaded!"
+        dump "Warning: No grammars loaded!\n"
     end
 end
 
@@ -140,13 +162,15 @@ function loadGrammar(filepath)
         chunk = grammar,
     }
 
-    assert(G, 'Grammar must be defined in global variable G')
-    assert(E, 'Extensions must be defined in global variable E')
+    assert(G, 'Grammar must be defined in global variable G in file: ' .. filepath .. '\n')
+    assert(E, 'Extensions must be defined in global variable E in file: ' .. filepath .. '\n')
 
     -- Save extensions to hash table
     for i, v in ipairs(E) do
         Extensions[v] = Grammars[#Grammars]
     end
+
+    dump('Grammar "'.. grammarName .. '" loaded with extensions: ' .. table.concat(E, ', ') .. '\n')
 
     G = nil
     E = nil
@@ -168,7 +192,7 @@ local astMetatable = {
 -- @param var table with fields name(string) and pattern(lpeg.pattern)
 -- @return leaf table
 function leaf(var)
-    dump(var.name, '\n')
+    --dump(var.name, '\n')
 
     assert (type(var) == 'table',                "Table expected!")
     assert (type(var.name) == 'string',          "Must have 'name' field")
@@ -188,7 +212,7 @@ end
 -- @param var table with fields name(string) and pattern(lpeg.pattern)
 -- @return node table
 function node(var)
-    dump(var.name, '\n')
+    --dump(var.name, '\n')
 
     assert (type(var) == 'table',                "Table expected!")
     assert (type(var.name) == 'string',          "Must have 'name' field")
@@ -562,5 +586,11 @@ loadGrammars()
 --dump'\n\n'
 --dumpAST(openedFile.tree)
 
+
+------------------------------------------------------------------------------------------------------------------ ENDING COMMANDS
+registerFile('test_file', 'arithmetic')
+
+dump '---------------------------------------------------------\n'
+dump 'Initialization script ended successfuly\n'
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";

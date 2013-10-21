@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 class QGraphicsScene;
+class TextFile;
 
 namespace Ui {
 class MainWindow;
@@ -24,6 +25,7 @@ private:
     void createScene();
 
     void testCanvas();
+    void testFileManager();
 };
 
 #endif // MAINWINDOW_H

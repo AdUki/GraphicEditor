@@ -28,7 +28,9 @@ SOURCES  += \
     Ui/Items/TextItem.cpp \
     Ui/Items/ImageItem.cpp \
     Ui/Items/BaseItem.cpp \
-    Ui/Root.cpp
+    Ui/Root.cpp \
+    Data/TextFile.cpp \
+    Data/FileManager.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -43,7 +45,9 @@ HEADERS  += \
     Ui/Items/TextItem.h \
     Ui/Items/ImageItem.h \
     Ui/Items/BaseItem.h \
-    Ui/Root.h
+    Ui/Root.h \
+    Data/TextFile.h \
+    Data/FileManager.h
 
 FORMS    += \
     mainwindow.ui

@@ -89,7 +89,7 @@ void Console::confirmCommand()
 void Console::writeCommandSign()
 {
     setTextColor(SystemColor);
-    insertPlainText("> ");
+    insertPlainText(">");
 }
 
 ////////////////////////////////////////////////////////////////

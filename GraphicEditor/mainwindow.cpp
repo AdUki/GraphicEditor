@@ -14,7 +14,9 @@
 #include "Ui/Items/TextItem.h"
 #include "Ui/console.h"
 
-#include "Data/interpreter.h"
+#include "Data/Interpreter.h"
+#include "Data/FileManager.h"
+#include "Data/TextFile.h"
 
 ////////////////////////////////////////////////////////////////
 MainWindow::MainWindow(QWidget *parent) :
@@ -27,11 +29,16 @@ MainWindow::MainWindow(QWidget *parent) :
     createDockWidgets();
 
 //    testCanvas();
+//    testFileManager();
 }
 
 ////////////////////////////////////////////////////////////////
 MainWindow::~MainWindow()
 {
+    // TODO: spravit automaticke mazanie singletonov
+    delete Interpreter::getInstance();
+    delete FileManager::getInstance();
+
     delete UI;
 }
 
@@ -46,7 +53,6 @@ void MainWindow::createScene()
 void MainWindow::createDockWidgets()
 {
     Console* console = new Console(this);
-    console->nextCommand();
 
     connect(console, SIGNAL(executeCommand(QByteArray)),
             Interpreter::getInstance(), SLOT(makeUserCall(const QByteArray&)));
@@ -125,4 +131,17 @@ void MainWindow::testCanvas()
     }
 
     scene.addItem(container);
+}
+
+////////////////////////////////////////////////////////////////
+void MainWindow::testFileManager()
+{
+    TextFile* file1 = new TextFile();
+    TextFile* file2 = new TextFile();
+    TextFile* file3 = new TextFile();
+    TextFile* file4 = new TextFile();
+    delete file1;
+    delete file2;
+    delete file3;
+    delete file4;
 }

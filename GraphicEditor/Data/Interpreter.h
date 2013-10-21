@@ -9,8 +9,10 @@ class lua_State;
 class Interpreter : public QObject
 {
     Q_OBJECT
-public:
+
     explicit Interpreter(QObject *parent = 0);
+
+public:
     ~Interpreter() override;
 
     static Interpreter* getInstance();
