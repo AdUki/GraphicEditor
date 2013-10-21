@@ -16,9 +16,12 @@ public:
     ~FileManager() override;
     static FileManager* getInstance();
 
+    QList<TextFile*> getModified() const;
+
 signals:
     
 public slots:
+    void saveAll();
 
 private slots:
     void removeFile(QObject* sender);

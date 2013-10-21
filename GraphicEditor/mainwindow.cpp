@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsLinearLayout>
 #include <QGraphicsWidget>
+#include <QDebug>
 
 #include "Ui/Grids/HorizontalGrid.h"
 #include "Ui/Grids/VerticalGrid.h"
@@ -143,5 +144,16 @@ void MainWindow::testFileManager()
     delete file1;
     delete file2;
     delete file3;
+    file4->addText("Skuska skuska", 0);
+    file4->addText(" koniec", 13);
+    file4->updateText("SKUSKA", 7, 7+6);
+    file4->removeText(0, 6);
+    try {
+        file4->save(); // Ulozeny subor musi obsahovat text "SKUSKA koniec"
+    }
+    catch (...) {
+        qDebug() << "Saving canceled";
+    }
+
     delete file4;
 }

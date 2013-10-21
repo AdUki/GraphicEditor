@@ -15,6 +15,7 @@ public:
 
     bool isOpened() const { return _file == nullptr; }
     bool isClosed() const { return _file != nullptr; }
+    bool isModified() const { return _modified; }
 
     QString getText() const { return _text; }
 
@@ -38,11 +39,14 @@ public slots:
 
     void open(const QString& filename);
     void save();
+    void saveAs(const QString& filename);
     void close();
 
 private:
     QString _text;
     QFile* _file;
+
+    bool _modified;
 };
 
 #endif // TEXTFILE_H

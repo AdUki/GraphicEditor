@@ -33,6 +33,24 @@ FileManager* FileManager::getInstance()
 }
 
 ////////////////////////////////////////////////////////////////
+QList<TextFile*> FileManager::getModified() const
+{
+    QList<TextFile*> modified;
+    for (TextFile* ptr : _files)
+        if (ptr->isModified())
+            modified.append(ptr);
+
+    return modified;
+}
+
+////////////////////////////////////////////////////////////////
+void FileManager::saveAll()
+{
+    for (TextFile* ptr : _files)
+        ptr->save();
+}
+
+////////////////////////////////////////////////////////////////
 void FileManager::removeFile(QObject *sender)
 {
     _files.remove(static_cast<TextFile*>(sender));
