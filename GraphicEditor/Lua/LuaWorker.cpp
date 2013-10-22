@@ -9,13 +9,45 @@
 #include "Data/Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
-LuaWorker::LuaWorker(const QByteArray& code)
+void LuaWorker::Argument::setNumber(int number) {
+    _state = State::Number;
+    _number = number;
+}
+
+////////////////////////////////////////////////////////////////
+void LuaWorker::Argument::setString(const QByteArray& string) {
+    _state = State::String;
+    _string = string;
+}
+
+////////////////////////////////////////////////////////////////
+void LuaWorker::Argument::pushToState(lua_State* L)
+{
+    switch (_state) {
+
+    case State::String:
+        lua_pushlstring(L, _string.data(), _string.size());
+        break;
+
+    case State::Number:
+        lua_pushinteger(L, _number);
+        break;
+
+    case State::Uninitialized:
+        Q_ASSERT(false);
+        break;
+    }
+}
+
+////////////////////////////////////////////////////////////////
+LuaWorker::LuaWorker()
 : QObject()
-, _code(code)
 {
     _thread = new QThread();
     moveToThread(_thread);
 
+    connect(this, SIGNAL(failed(QByteArray)), Interpreter::getInstance(), SIGNAL(emitError(QByteArray)));
+    connect(this, SIGNAL(finished()), Interpreter::getInstance(), SIGNAL(workDone()));
     connect(this, SIGNAL(finished()), _thread, SLOT(quit()));
     connect(this, SIGNAL(finished()), this, SLOT(deleteLater()));
     connect(_thread, SIGNAL(finished()), _thread, SLOT(deleteLater()));
@@ -32,6 +64,20 @@ LuaWorker::~LuaWorker()
 #ifdef QT_DEBUG
     qDebug() << "FINISHED" << _thread;
 #endif
+}
+
+////////////////////////////////////////////////////////////////
+void LuaWorker::setScript(const QByteArray& script)
+{
+    Q_ASSERT(_function.isEmpty());
+    _script = script;
+}
+
+////////////////////////////////////////////////////////////////
+void LuaWorker::setFunction(const QString& name)
+{
+    Q_ASSERT(_script.isEmpty());
+    _function = name.toLocal8Bit();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -57,12 +103,13 @@ void LuaWorker::protectedCall()
 
     emit started(_thread);
 
-    int error = luaL_loadbuffer(L, _code.data(), _code.length(), "pcall") ||
-                lua_pcall(L, 0, 0, 0);
+    try {
+        prepareLuaState(L);
+        if (lua_pcall(L, _arguments.size(), 0, 0))
+            throw 2;
+    }
+    catch(...) {
 
-    Interpreter::getInstance()->getWorkerMutex()->unlock();
-
-    if (error) {
         QByteArray message(lua_tostring(L, -1));
         lua_pop(L, 1);  /* pop error message from the stack */
 
@@ -71,6 +118,8 @@ void LuaWorker::protectedCall()
 
         emit failed(message);
     }
+
+    Interpreter::getInstance()->getWorkerMutex()->unlock();
 
     emit finished();
 }
@@ -84,10 +133,28 @@ void LuaWorker::call()
 
     emit started(_thread);
 
-    luaL_loadbuffer(L, _code.data(), _code.length(), "call");
-    lua_call(L, 0, 0);
+    prepareLuaState(L);
+    lua_call(L, _arguments.size(), 0);
 
     Interpreter::getInstance()->getWorkerMutex()->unlock();
 
     emit finished();
+}
+
+////////////////////////////////////////////////////////////////
+void LuaWorker::prepareLuaState(lua_State* L)
+{
+    // Push script
+    if (!_script.isEmpty() &&
+        luaL_loadbuffer(L, _script.data(), _script.length(), "script"))
+        throw 1;
+
+    // Push function and arguments
+    if (!_function.isEmpty()) {
+
+        lua_getglobal(L, _function);
+
+        for (Argument& arg : _arguments)
+            arg.pushToState(L);
+    }
 }

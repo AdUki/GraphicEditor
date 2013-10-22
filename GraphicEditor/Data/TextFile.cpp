@@ -15,23 +15,38 @@ TextFile::TextFile(QObject *parent)
     , _modified(false)
 {
     FileManager::getInstance()->addFile(this);
-    // TODO: implement this
-//    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
+    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
 
     qDebug() << QString("File " + thisToString() + " created");
 }
 
 ////////////////////////////////////////////////////////////////
-TextFile::TextFile(const QString& filename, QObject *parent)
-    : TextFile(parent)
+TextFile::TextFile(const QString& fileName, QObject *parent)
+    : QObject(parent)
+    , _file(nullptr)
+    , _modified(false)
 {
-    open(filename);
+    FileManager::getInstance()->addFile(this);
+    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
+
+    open(fileName);
+
+    qDebug() << QString("File " + thisToString() + " created");
 }
 
 ////////////////////////////////////////////////////////////////
 TextFile::~TextFile()
 {
+    Interpreter::getInstance()->makeUnregisterFileCall(thisToString());
     qDebug() << "File " + thisToString() + " closed";
+}
+
+////////////////////////////////////////////////////////////////
+void TextFile::setText(const QString &text)
+{
+    _modified = true;
+    _text = text;
+    emit changed(_text);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -84,6 +99,9 @@ void TextFile::open(const QString& filename)
 
     QTextStream in(_file);
     _text = in.readAll();
+
+    QFileInfo info(*_file);
+    Interpreter::getInstance()->makeSetFileAbsolutePathCall(thisToString(), info.absolutePath());
 
     emit opened(_text);
 }
@@ -140,14 +158,19 @@ void TextFile::close()
 }
 
 ////////////////////////////////////////////////////////////////
-void TextFile::reparseFile() const
+void TextFile::reparse() const
 {
-    //TODO: implement this
-//    Interpreter::getInstance()->makeReparseFileCall(thisToString(), _text);
+    Interpreter::getInstance()->makeReparseFileCall(thisToString(), _text);
 }
 
 ////////////////////////////////////////////////////////////////
-QString TextFile::thisToString()
+void TextFile::setGrammar(const QString &grammar) const
+{
+    Interpreter::getInstance()->makeSetFileGrammarCall(thisToString(), grammar);
+}
+
+////////////////////////////////////////////////////////////////
+QString TextFile::thisToString() const
 {
     if (_pointer.isEmpty())
         _pointer.sprintf("%p", this);

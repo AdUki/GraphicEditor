@@ -37,9 +37,9 @@ MainWindow::MainWindow(QWidget *parent) :
 ////////////////////////////////////////////////////////////////
 MainWindow::~MainWindow()
 {
-    // TODO: spravit automaticke mazanie singletonov
-    delete Interpreter::getInstance();
+    // NOTE: Poradie je dolezite! Interpreter sa musi zmazat ako posledny!
     delete FileManager::getInstance();
+    delete Interpreter::getInstance();
 
     delete UI;
 }
@@ -57,7 +57,7 @@ void MainWindow::createDockWidgets()
     Console* console = new Console(this);
 
     connect(console, SIGNAL(executeCommand(QByteArray)),
-            Interpreter::getInstance(), SLOT(makeUserCall(const QByteArray&)));
+            Interpreter::getInstance(), SLOT(makeProtectedCall(const QByteArray&)));
 
     connect(Interpreter::getInstance(), SIGNAL(emitError(const QByteArray&)),
             console, SLOT(writeError(const QByteArray&)));
@@ -85,13 +85,16 @@ void MainWindow::createDockWidgets()
 ////////////////////////////////////////////////////////////////
 void MainWindow::createConnections()
 {
+    _textEditFile = new TextFile();
+    _textEditFile->setGrammar("arithmetic");
     connect(UI->reparseTextButton, SIGNAL(clicked()), this, SLOT(reparsePlainTextEdit()));
 }
 
 ////////////////////////////////////////////////////////////////
 void MainWindow::reparsePlainTextEdit()
 {
-    // TODO: implementovat reparse pre testovacie ucely
+    _textEditFile->setText(UI->plainTextEdit->document()->toPlainText());
+    _textEditFile->reparse();
 }
 
 ////////////////////////////////////////////////////////////////

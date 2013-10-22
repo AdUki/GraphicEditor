@@ -19,7 +19,9 @@ public:
 
     QString getText() const { return _text; }
 
-    void reparseFile() const;
+    void reparse() const;
+    void setGrammar(const QString& grammar) const;
+    void setText(const QString& text);
 
     // For saving, renaming, filename etc.
     // Use with caution :)
@@ -45,13 +47,13 @@ public slots:
     void close();
 
 private:
-    QString _pointer;
+    mutable QString _pointer;
     QString _text;
     QFile* _file;
 
     bool _modified;
 
-    inline QString thisToString();
+    inline QString thisToString() const;
 };
 
 #endif // TEXTFILE_H

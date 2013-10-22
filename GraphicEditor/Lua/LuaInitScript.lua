@@ -14,14 +14,16 @@ lfs = require 'lfs'
 ------------------------------------------------------------------------------------------------------------------ FILES HANDLING
 
 ---------------------------------------------------------
--- Opened files table, indexed with full file paths
+-- Opened files table, indexed with their Qt pointers
 -- @param grammar
 -- @param extension file suffix
 -- @param tree actual AST
+-- @param absolutePath fullpath with filename
 Files = {
     extension = nil,
     grammar = nil,
     tree = nil,
+    absolutePath = nil,
 }
 
 ---------------------------------------------------------
@@ -29,83 +31,61 @@ Files = {
 -- @param name file indentifier
 -- @param fileExtension
 -- @param text
+-- @param grammarName
 -- @return file reference
-function registerFile(name, extension, text)
+function registerFile(name, text, grammarName)
     
     text = text or ""
-
-    local fileGrammar = assert(Extensions[extension], 'No grammar for extension "'.. extension .. '" defined').grammar
+    grammarName = grammarName or "default"
+    local grammar = Grammars[grammarName] or DefaultGrammar
 
     Files[name] = {
         extension = extension,
-        grammar = fileGrammar,
-        tree = fileGrammar:match(text)
+        grammar = grammar,
+        tree = grammar:match(text)
     }
 
-    dump ('File "' .. name .. '" registered\n')
+    dump ('File "' .. name .. '" registered with "' .. grammarName .. '" grammar\n')
 
     return Files[name]
 end
 
 ---------------------------------------------------------
--- Opens file in location and register it with it fullpath
--- @param path (string) path to file
--- @return[1] fullpath
--- @return[2] opened file reference
-function openFile(path)
-    -- TODO: pridat warning ked je subor read-only
-    local file = assert(io.open(path, "r"))
-    local text = file:read("*all")
-    file:close()
-
-    local workDir = lfs.currentdir()
-    local filepath = lfs.fullpath(path)
-    local fileExtension = filepath:match('.*[%.\\/](.*)$') -- get extension, relies that '\' sign cannot be in extension
-
-    registerFile(filePath, fileExtension, text)
-
-    return filepath, Files[filepath]
-end
-
----------------------------------------------------------
--- Save file with its filename to its location
--- @param path (string) path to file
-function saveFile(path)
-    assert(Files[path], path .. ': File is not open!')
-    local file = assert(io.open(Files[path].filepath, "w"))
-    -- TODO: vyrob text podla stromu
-    file:write(File[path].text)
-    file:close()
-end
-
----------------------------------------------------------
--- Save file with different filename and location
--- @param sourcePath (string) path to file, which we want to save
--- @param outputPath (string) location where we want to save that file
-function saveFileAs(sourcePath, outputPath)
-    assert(Files[sourcePath], sourcePath .. ': File is not open!')
-    local file = assert(io.open(outputPath, "w"))
-    -- TODO: vyrob text podla stromu
-    file:write(File[path].text)
-    file:close()
-    Files[outputPath] = Files[sourcePath]
-    Files[sourcePath] = nil
-end
-
----------------------------------------------------------
--- Saves all files to disk
-function saveAll()
-    -- TODO
-end
-
----------------------------------------------------------
 -- Closes / unregisters file
 -- @param path (string) path to file
-function closeFile(path)
-    assert(Files[path], path .. ': File is not open!')
-    Files[path] = nil
+function unregisterFile(name)
+    assert(Files[name], name .. ': File is not registered!')
+    Files[name] = nil
 
-    dump ('File "' .. path .. '" closed\n')
+    dump ('File "' .. name .. '" unregistered\n')
+end
+
+---------------------------------------------------------
+function setFileAbsolutePath(name, path)
+    local file = assert(Files[path], path .. ': File is not registered!')
+    file.absolutePath = path
+
+    dump ('File "' .. name .. '" absolute path set to: ' .. path .. '\n')
+end
+
+---------------------------------------------------------
+function setFileGrammar(name, grammar)
+    local file = assert(Files[name], name .. ': File is not registered!')
+    local newGrammar = assert(Grammars[grammar], 'No grammar "'.. grammar .. '" defined')
+
+    -- TODO: zmaz AST s osobitnou funkciou
+    -- reparseFile(name, "")
+
+    file.grammar = newGrammar.grammar;
+    -- reparseFile(name, file.text)
+
+    dump ('File "' .. name .. '" switched to  "' .. grammar .. '" grammar\n')
+end
+
+---------------------------------------------------------
+function updateFile(name, text)
+    local file = assert(Files[path], path .. ': File is not registered!')
+
 end
 
 ------------------------------------------------------------------------------------------------------------------ GRAMMARS HANDLING
@@ -116,6 +96,10 @@ end
 Grammars = {
     grammar = nil,
 }
+
+---------------------------------------------------------
+-- Default grammar for text files
+DefaultGrammar = nil
 
 ---------------------------------------------------------
 -- Table with all grammars extensions. Indexed with extensions
@@ -156,8 +140,7 @@ function loadGrammar(filepath)
     grammar();
     
     -- Save grammar to global grammar table
-    Grammars[#Grammars + 1] = {
-        name = grammarName,
+    Grammars[grammarName] = {
         grammar = G,
         chunk = grammar,
     }
@@ -167,7 +150,7 @@ function loadGrammar(filepath)
 
     -- Save extensions to hash table
     for i, v in ipairs(E) do
-        Extensions[v] = Grammars[#Grammars]
+        Extensions[v] = Grammars[grammarName]
     end
 
     dump('Grammar "'.. grammarName .. '" loaded with extensions: ' .. table.concat(E, ', ') .. '\n')
@@ -324,7 +307,7 @@ local parseCycle = 0
 -- Recursive AST search function with callback ASTnodeCallback
 -- @param filepath
 -- @param text
-function reparseFile(filepath, text)
+function reparseFile(name, text)
 
     local function compareNodes(node1, node2)
         if node1 == nil or node2 == nil then 
@@ -345,7 +328,7 @@ function reparseFile(filepath, text)
             tbl1 and tbl1.visit == parseCycle and 
             tbl2 and tbl2.visit == parseCycle
         then
-            dump 'END OF TREE!\n'
+            --dump 'END OF TREE!\n'
             return true
         end
         return false
@@ -365,7 +348,7 @@ function reparseFile(filepath, text)
         if compareNodes(old, new) then
 
             if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                dump('UPDATE: ' .. old.table.name .. ' ' .. old.value .. ' to ' .. new.value .. '\n')
+                dump('UPDATE: ' .. old.table.name .. ' "' .. old.value .. '" to "' .. new.value .. '"\n')
             end
 
             -- Copy values from old
@@ -376,7 +359,7 @@ function reparseFile(filepath, text)
             -- If we havent search back then do it
             if finishFront == false then
                 finishFront = true
-                dump 'START SEARCH BACKWARD!\n'
+                --dump 'START SEARCH BACKWARD!\n'
                 -- Let compareBack() work his job
                 coroutine.yield()
                 -- Check if back search didnt marked our node
@@ -387,12 +370,12 @@ function reparseFile(filepath, text)
 
             -- Remove old nodes
             if old ~= nil then
-                dump('REMOVE: ' .. old.table.name .. ' ' .. tostring(old.value) .. '\n')
+                dump('REMOVE: ' .. old.table.name .. ' "' .. tostring(old.value) .. '"\n')
                 deleteNodesTable[#deleteNodesTable + 1] = old
             end
             -- Add new nodes
             if new ~= nil then
-                dump('ADD: ' .. new.table.name .. ' ' .. tostring(new.value) .. '\n')
+                dump('ADD: ' .. new.table.name .. ' "' .. tostring(new.value) .. '"\n')
             end
 
         end
@@ -524,7 +507,7 @@ function reparseFile(filepath, text)
 
     parseCycle = parseCycle + 1
 
-    local file = assert(Files[filepath], 'No opened file with ' .. filepath)
+    local file = assert(Files[name], 'No opened file with ' .. name)
     local oldTree = file.tree
     local newTree = file.grammar:match(text)
 
@@ -534,18 +517,18 @@ function reparseFile(filepath, text)
     currentTextIndex = 0
     currentTextBackIndex = #text
 
-    dump('\n\nText lenght is ' .. tostring(currentTextBackIndex) .. '\n')
+    --dump('\n\nText lenght is ' .. tostring(currentTextBackIndex) .. '\n')
 
     deleteNodesTable = {}
     
     assert(oldTree and newTree)
-
+    --[[
     dump'\n\nOLD TREE\n'
     dumpAST(oldTree)
 
     dump '\n\nNEW TREE\n'
     dumpAST(newTree)
-    
+    --]]
     local compareFrontCoroutine = coroutine.create(compareFront)
     local compareBackCoroutine = coroutine.create(compareBack)
 
@@ -555,16 +538,28 @@ function reparseFile(filepath, text)
     coroutine.resume(compareFrontCoroutine, rootOld, rootNew)
     
     compareBack(rootOld, rootNew)
-    dump'SEARCH BACKWARD ENDED!\n\n'
+    --dump'SEARCH BACKWARD ENDED!\n\n'
 
     coroutine.resume(compareFrontCoroutine)
+
+    file.tree = newTree
 
     return newTree
 end
 
------------------------------------------------------------------------------------------------------------------- TESTING COMMANDS
+------------------------------------------------------------------------------------------------------------------ DEFAULT GRAMMAR
+local defaultGrammarAll = leaf{ name = 'text', pattern = lpeg.P(1)^0 }
+DefaultGrammar = lpeg.Ct({ 
+    "Start",
+    Start = defaultGrammarAll(),
+})
+
+------------------------------------------------------------------------------------------------------------------ ENDING COMMANDS
 
 loadGrammars()
+
+dump '---------------------------------------------------------\n'
+dump 'Initialization script ended successfuly\n'
 
 --local fullpath, openedfile
 --fullpath, openedFile = openFile'../test input/input.arithmetic'
@@ -586,11 +581,5 @@ loadGrammars()
 --dump'\n\n'
 --dumpAST(openedFile.tree)
 
-
------------------------------------------------------------------------------------------------------------------- ENDING COMMANDS
-registerFile('test_file', 'arithmetic')
-
-dump '---------------------------------------------------------\n'
-dump 'Initialization script ended successfuly\n'
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";

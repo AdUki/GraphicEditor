@@ -6,6 +6,7 @@
 class lua_State;
 class QMutex;
 class TextFile;
+class LuaWorker;
 
 class Interpreter : public QObject
 {
@@ -21,8 +22,6 @@ public:
     lua_State* getState() { return _internalState; }
     QMutex* getWorkerMutex() { return _workerMutex; }
 
-    QMutex* TerminateMutex;
-
 signals:
     void emitError(const QByteArray& error);
     void emitOutput(const QByteArray& output);
@@ -30,9 +29,16 @@ signals:
     void stopRunningWorkers();
 
 public slots:
+    ////////////////////////////////////////////////////////////////
+    void makeRegisterFileCall(const QString& file);
+    void makeUnregisterFileCall(const QString& file);
+    void makeReparseFileCall(const QString& file, const QString& text);
+    void makeSetFileAbsolutePathCall(const QString& file, const QString& name);
+    void makeSetFileGrammarCall(const QString& file, const QString& grammar);
+
+    ////////////////////////////////////////////////////////////////
     void makeProtectedCall(const QByteArray& call);
     void makeCall(const QByteArray& call);
-
     void stopWork();
 
 private slots:
@@ -42,6 +48,8 @@ private slots:
 private:
     lua_State* _internalState;
     QMutex* _workerMutex;
+
+    void loadInitScript();
 };
 
 #endif // INTERPRETER_H

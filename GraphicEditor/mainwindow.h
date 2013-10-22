@@ -24,6 +24,8 @@ private slots:
 private:
     Ui::MainWindow *UI;
 
+    TextFile* _textEditFile;
+
     void createDockWidgets();
     void createScene();
     void createConnections();
