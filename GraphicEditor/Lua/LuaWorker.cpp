@@ -9,37 +9,6 @@
 #include "Data/Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
-void LuaWorker::Argument::setNumber(int number) {
-    _state = State::Number;
-    _number = number;
-}
-
-////////////////////////////////////////////////////////////////
-void LuaWorker::Argument::setString(const QByteArray& string) {
-    _state = State::String;
-    _string = string;
-}
-
-////////////////////////////////////////////////////////////////
-void LuaWorker::Argument::pushToState(lua_State* L)
-{
-    switch (_state) {
-
-    case State::String:
-        lua_pushlstring(L, _string.data(), _string.size());
-        break;
-
-    case State::Number:
-        lua_pushinteger(L, _number);
-        break;
-
-    case State::Uninitialized:
-        Q_ASSERT(false);
-        break;
-    }
-}
-
-////////////////////////////////////////////////////////////////
 LuaWorker::LuaWorker()
 : QObject()
 {

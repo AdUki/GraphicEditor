@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QVector>
 
+#include "./Argument.h"
+
 class lua_State;
 
 ////////////////////////////////////////////////////////////////
@@ -11,34 +13,6 @@ class LuaWorker : public QObject
     Q_OBJECT
 
 public:
-    ////////////////////////////////////////////////////////////////
-    // TODO: create own class
-    /// Use implicit constructors to initialize
-    /// e. g. Interpreter::getInstance()->addArgument(8)
-    ///       Interpreter::getInstance()->addArgument("value=8")
-    struct Argument {
-        Argument() : _number(0), _state(State::Uninitialized) {}
-        Argument(int number) : _number(number), _state(State::Number) { }
-        Argument(const QByteArray& string) : _string(string), _state(State::String) { }
-        Argument(const QString& string) : _string(string.toLocal8Bit()), _state(State::String) { }
-
-        void setNumber(int number);
-        void setString(const QByteArray& string);
-        void pushToState(lua_State* L);
-
-    private:
-        enum class State {
-            Uninitialized = 0,
-            Number,
-            String
-        };
-
-        QByteArray _string;
-        int _number;
-        State _state;
-    };
-
-    ////////////////////////////////////////////////////////////////
     explicit LuaWorker();
     ~LuaWorker();
 

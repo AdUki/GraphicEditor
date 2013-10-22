@@ -30,7 +30,8 @@ SOURCES  += \
     Ui/Root.cpp \
     Data/TextFile.cpp \
     Data/FileManager.cpp \
-    Lua/LuaWorker.cpp
+    Lua/LuaWorker.cpp \
+    Lua/Argument.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -47,7 +48,8 @@ HEADERS  += \
     Ui/Root.h \
     Data/TextFile.h \
     Data/FileManager.h \
-    Lua/LuaWorker.h
+    Lua/LuaWorker.h \
+    Lua/Argument.h
 
 FORMS    += \
     mainwindow.ui

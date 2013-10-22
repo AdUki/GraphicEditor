@@ -1,11 +1,8 @@
 #include "LuaBindings.h"
 
-#include <QMutex>
-
 #include "Data/Interpreter.h"
 
-std::vector<std::string> binders = {"", "", ""};
-
+////////////////////////////////////////////////////////////////
 #define BIND_C_FUNCTION(name) \
     lua_pushcfunction(L, name); \
     lua_setglobal(L, #name);
