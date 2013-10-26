@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <thread>
+
 #include <QWidget>
 #include <QDockWidget>
 #include <QPlainTextEdit>
@@ -86,8 +88,15 @@ void MainWindow::createDockWidgets()
 void MainWindow::createConnections()
 {
     _textEditFile = new TextFile();
+
+    // Uspime thread, pretoze chceme, aby sa registroval novo vytvoreny file
+    std::chrono::milliseconds duration(100);
+    std::this_thread::sleep_for(duration);
+
     _textEditFile->setGrammar("arithmetic");
+
     connect(UI->reparseTextButton, SIGNAL(clicked()), this, SLOT(reparsePlainTextEdit()));
+    connect(UI->plainTextEdit, SIGNAL(textChanged()), this, SLOT(reparsePlainTextEdit()));
 }
 
 ////////////////////////////////////////////////////////////////

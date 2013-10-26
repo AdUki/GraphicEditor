@@ -1,5 +1,8 @@
 #include "LuaBindings.h"
 
+#include <QObject>
+#include <QDebug>
+
 #include "Data/Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
@@ -10,27 +13,103 @@
 ////////////////////////////////////////////////////////////////
 void createBindings(lua_State* L)
 {
-    BIND_C_FUNCTION(dump);
+    BIND_C_FUNCTION(QT_addElement);
+    BIND_C_FUNCTION(QT_updateElement);
+    BIND_C_FUNCTION(QT_removeElement);
+    BIND_C_FUNCTION(QT_commitElementChanges);
+
     BIND_C_FUNCTION(openFile);
     BIND_C_FUNCTION(closeFile);
     BIND_C_FUNCTION(saveFile);
+
+    BIND_C_FUNCTION(dump);
+}
+
+////////////////////////////////////////////////////////////////
+QList<QObject*> elementsToAdd;
+QList<QObject*> elementsToRemove;
+
+////////////////////////////////////////////////////////////////
+int QT_addElement(lua_State* L)
+{
+    lua_tostring(L, 1);
+
+
+    qDebug() << "Add element";
+
+    // TODO: Spravit elementFactory, aby nam vyrabala elementy...
+    //       Faktory vyraba elementy v novom threade, lebo interpreter v nom bezi
+    //       Faktory moze reusovat zmazane elementy
+    QObject* newElement = new QObject();
+
+    lua_pushlightuserdata(L, static_cast<void*>(newElement));
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////
+int QT_updateElement(lua_State* L)
+{
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
+    qDebug() << "Update element";
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////
+int QT_removeElement(lua_State* L)
+{
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
+    qDebug() << "Remove element";
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////
+int QT_commitElementChanges(lua_State* L)
+{
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
+    qDebug() << "Committing element changes";
+
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////
 int openFile(lua_State* L)
 {
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
     return 0;
 }
 
 ////////////////////////////////////////////////////////////////
 int closeFile(lua_State* L)
 {
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
     return 0;
 }
 
 ////////////////////////////////////////////////////////////////
 int saveFile(lua_State* L)
 {
+    Q_UNUSED(L);
+
+    //TODO: implementacia
+
     return 0;
 }
 

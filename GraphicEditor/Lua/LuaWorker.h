@@ -13,13 +13,12 @@ class LuaWorker : public QObject
     Q_OBJECT
 
 public:
+    typedef QVector<Argument> Arguments;
+
     explicit LuaWorker();
     ~LuaWorker();
 
-    typedef QVector<Argument> Arguments;
-
     void setScript(const QByteArray& script);
-
     void setFunction(const QString& name);
 
     template<typename T> void addArgument(const T& arg) {

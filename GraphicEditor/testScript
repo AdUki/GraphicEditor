@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Copy file LuaInitScript except first three lines
+sed '1,3 s/.*/ /' Lua/LuaInitScript.lua > luaInitScript.lua
+
+# Set up functions that are from qt application
+echo 'QT_commitElementChanges = function() end' >> luaInitScript.lua
+echo 'QT_updateElement = function() end' >> luaInitScript.lua
+echo 'QT_addElement = function() end' >> luaInitScript.lua
+echo 'QT_removeElement = function() end' >> luaInitScript.lua
+
+# Append to created file test.lua file
+echo 'dofile("test.lua")' >> luaInitScript.lua
+
+# Load libraries and set up dump function and execute file with LuaJIT
+../LuaJIT-2.0.2/src/luajit.exe -e'dump = io.write; package.cpath =  "../luafilesystem/src/?.dll;../lpeg-0.12/?.dll;" .. package.cpath' luaInitScript.lua 
+
+# Clean up
+rm luaInitScript.lua

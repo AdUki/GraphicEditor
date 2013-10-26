@@ -3,7 +3,7 @@ const char* luaInitScript = R"( -- LONG STRING BEGIN
 
 -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 io.stdout:setvbuf 'no'
-dump 'Initialization script started\n'
+dump '\nInitialization script started\n'
 dump '---------------------------------------------------------\n'
 
 ---------------------------------------------------------
@@ -35,18 +35,19 @@ Files = {
 -- @return file reference
 function registerFile(name, text, grammarName)
     
-    text = text or ""
     grammarName = grammarName or "default"
-    local grammar = Grammars[grammarName] or DefaultGrammar
+    local fileGrammar = assert(Grammars[grammarName] or DefaultGrammar)
 
     Files[name] = {
-        extension = extension,
-        grammar = grammar,
-        tree = grammar:match(text)
+        grammar = fileGrammar,
+        tree = {}
     }
 
     dump ('File "' .. name .. '" registered with "' .. grammarName .. '" grammar\n')
 
+    if text then
+        reparseFile(name, text)
+    end
     return Files[name]
 end
 
@@ -93,9 +94,7 @@ end
 ---------------------------------------------------------
 -- Table with all grammars. Indexed with grammar name.
 -- @param grammar stored Lpeg grammar
-Grammars = {
-    grammar = nil,
-}
+Grammars = {}
 
 ---------------------------------------------------------
 -- Default grammar for text files
@@ -138,15 +137,12 @@ function loadGrammar(filepath)
     local grammar = assert(loadfile(filepath), 'Grammar ' .. grammarName .. 'failed to parse')
 
     grammar();
-    
-    -- Save grammar to global grammar table
-    Grammars[grammarName] = {
-        grammar = G,
-        chunk = grammar,
-    }
 
     assert(G, 'Grammar must be defined in global variable G in file: ' .. filepath .. '\n')
     assert(E, 'Extensions must be defined in global variable E in file: ' .. filepath .. '\n')
+
+    -- Save grammar to global grammar table
+    Grammars[grammarName] = G
 
     -- Save extensions to hash table
     for i, v in ipairs(E) do
@@ -183,7 +179,12 @@ function leaf(var)
     assert (var.capturePattern == nil,           "Index 'capturePattern' is system reserved!")
     assert (var.value == nil,                    "Index 'value' is system reserved!")
 
-    var.capturePattern = lpeg.Ct( lpeg.Cg(lpeg.Cc(var), 'table') * lpeg.Cg(var.pattern, 'value') )
+    var.capturePattern = lpeg.Ct( 
+        lpeg.Cg(lpeg.Cp(), 'startIndex') *
+        lpeg.Cg(lpeg.Cc(var), 'table') * 
+        lpeg.Cg(var.pattern, 'value') *
+        lpeg.Cg(lpeg.Cp(), 'endIndex')
+    )
     
     setmetatable(var, astMetatable)
     return var
@@ -203,7 +204,12 @@ function node(var)
     assert (var.capturePattern == nil,           "Index 'capturePattern' is system reserved!")
     assert (var.value == nil,                    "Index 'value' is system reserved!")
     
-    var.capturePattern = lpeg.Ct( lpeg.Cg(lpeg.Cc(var), 'table') * lpeg.Cg(lpeg.Ct(var.pattern), 'value') )
+    var.capturePattern = lpeg.Ct(
+        lpeg.Cg(lpeg.Cp(), 'startIndex') *
+        lpeg.Cg(lpeg.Cc(var), 'table') * 
+        lpeg.Cg(lpeg.Ct(var.pattern), 'value') *
+        lpeg.Cg(lpeg.Cp(), 'endIndex')
+    )
 
     setmetatable(var, astMetatable)
     return var
@@ -256,7 +262,7 @@ function crawlAST(ast)
 
     ---------------------------------------------------------
     -- Recursive AST search function with callback ASTnodeCallback
-    -- @param tbl AST element
+    -- @param AST table
     local function search(tbl)
         local size = #tbl
         local startTextIndex = currentTextIndex
@@ -305,23 +311,27 @@ local parseCycle = 0
 
 ---------------------------------------------------------
 -- Recursive AST search function with callback ASTnodeCallback
--- @param filepath
--- @param text
+-- @param
+-- @param
 function reparseFile(name, text)
 
+    ---------------------------------------------------------
     local function compareNodes(node1, node2)
         if node1 == nil or node2 == nil then 
             return false 
         end
+
         return node1.table.name == node2.table.name
     end
 
+    ---------------------------------------------------------
     local function findMaximum(tbl1, tbl2)
         if tbl1 == nil or type(tbl1.value) ~= 'table' then return #tbl2.value end
         if tbl2 == nil or type(tbl2.value) ~= 'table' then return #tbl1.value end
         return #tbl1.value > #tbl2.value and #tbl1.value or #tbl2.value
     end
 
+    ---------------------------------------------------------
     local function checkForEnd(tbl1, tbl2)
         -- Check if it is visited node
         if  tbl1 == nil and tbl2 == nil or
@@ -334,6 +344,7 @@ function reparseFile(name, text)
         return false
     end
 
+    ---------------------------------------------------------
     local function compareFront(old, new, parent)
 
         -- Check if it is visited node
@@ -348,18 +359,17 @@ function reparseFile(name, text)
         if compareNodes(old, new) then
 
             if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                dump('UPDATE: ' .. old.table.name .. ' "' .. old.value .. '" to "' .. new.value .. '"\n')
+                updateElement(old, new)
             end
 
             -- Copy values from old
             -- TODO: move references to new
 
         else
-            
             -- If we havent search back then do it
             if finishFront == false then
                 finishFront = true
-                --dump 'START SEARCH BACKWARD!\n'
+                dump 'START: backward search!\n'
                 -- Let compareBack() work his job
                 coroutine.yield()
                 -- Check if back search didnt marked our node
@@ -370,19 +380,13 @@ function reparseFile(name, text)
 
             -- Remove old nodes
             if old ~= nil then
-                dump('REMOVE: ' .. old.table.name .. ' "' .. tostring(old.value) .. '"\n')
-                deleteNodesTable[#deleteNodesTable + 1] = old
+                removeElement(old);
             end
             -- Add new nodes
             if new ~= nil then
-                dump('ADD: ' .. new.table.name .. ' "' .. tostring(new.value) .. '"\n')
+                addElement(new, parent)
             end
 
-        end
-
-        -- Mark start index
-        if new then 
-            new.startIndex = currentTextIndex 
         end
 
         -- Check if it is node with table
@@ -394,27 +398,23 @@ function reparseFile(name, text)
             
             -- Recursive search
             for index = 1, max, 1 do
-                compareFront(old and old.value[index],new and new.value[index], old, index)
+                compareFront(old and old.value[index], new and new.value[index], new)
                 if finishFront then return end
             end
 
         end
 
-        -- Calculate index and mark end index and visit flag
-        if old then 
-            old.visit = parseCycle 
+        -- Mark visit flags
+        if old then
+            old.visit = parseCycle
         end
         if new then
-            
-            if type(new.value) ~= 'table' then
-                currentTextIndex = currentTextIndex + new.value:len()
-            end
-            new.endIndex = currentTextIndex
             new.visit = parseCycle
-
         end
+
     end
 
+    ---------------------------------------------------------
     local function compareBack(old, new, parent)
 
         -- Check if it is visited node
@@ -430,7 +430,7 @@ function reparseFile(name, text)
         if compareNodes(old, new) then
 
             if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                dump('UPDATE: ' .. old.table.name .. ' ' .. old.value .. ' to ' .. new.value .. '\n')
+                updateElement(old, new)
             end
             -- Copy values from old
             -- TODO: move references to new
@@ -439,19 +439,14 @@ function reparseFile(name, text)
 
             -- Remove old nodes
             if old ~= nil then
-                dump('REMOVE: ' .. old.table.name .. ' ' .. tostring(old.value) .. '\n')
-                deleteNodesTable[#deleteNodesTable + 1] = old
+                removeElement(old)
             end
+
             -- Add new nodes
             if new ~= nil then
-                dump('ADD: ' .. new.table.name .. ' ' .. tostring(new.value) .. '\n')
+                addElement(new, parent)
             end
 
-        end
-
-        -- Mark that we were here and end index
-        if new then 
-            new.endIndex = currentTextBackIndex 
         end
 
         -- Check if it is node or leaf
@@ -465,46 +460,23 @@ function reparseFile(name, text)
 
             -- Recursive search
             for index = 1, max, 1 do
-                compareBack(old and old.value[oldSize - index + 1], new and new.value[newSize - index + 1], old)
+                compareBack(old and old.value[oldSize - index + 1], new and new.value[newSize - index + 1], new)
                 if finishBack then return end
             end
 
         end
 
-        -- Calculate index and mark start index
-        if new then
-            
-            if type(new.value) ~= 'table' then
-                currentTextIndex = currentTextIndex + new.value:len()
-            end
-            new.startIndex = currentTextBackIndex
-
-        end
-
-
-        -- Calculate index and mark end index and visit flag
-        if old then 
-            old.visit = parseCycle 
+        -- Mark visit flags
+        if old then
+            old.visit = parseCycle
         end
         if new then
-            
-            if type(new.value) ~= 'table' then
-                currentTextBackIndex = currentTextBackIndex - new.value:len()
-            end
-            new.startIndex = currentTextBackIndex 
-            new.visit =parseCycle
-
+            new.visit = parseCycle
         end
 
     end
 
-    -- local combineAST = coroutine.create( function(old, new)
-    --     -- cycle trees from front and back
-
-    --     -- deleteItemCallback()
-    --     -- addItemCallback()
-    -- end)
-
+    ---------------------------------------------------------
     parseCycle = parseCycle + 1
 
     local file = assert(Files[name], 'No opened file with ' .. name)
@@ -513,22 +485,9 @@ function reparseFile(name, text)
 
     finishFront = false
     finishBack = false
-
-    currentTextIndex = 0
-    currentTextBackIndex = #text
-
-    --dump('\n\nText lenght is ' .. tostring(currentTextBackIndex) .. '\n')
-
-    deleteNodesTable = {}
     
     assert(oldTree and newTree)
-    --[[
-    dump'\n\nOLD TREE\n'
-    dumpAST(oldTree)
-
-    dump '\n\nNEW TREE\n'
-    dumpAST(newTree)
-    --]]
+    
     local compareFrontCoroutine = coroutine.create(compareFront)
     local compareBackCoroutine = coroutine.create(compareBack)
 
@@ -536,50 +495,45 @@ function reparseFile(name, text)
     local rootNew = { table = { name='root' }, value = newTree }
 
     coroutine.resume(compareFrontCoroutine, rootOld, rootNew)
-    
     compareBack(rootOld, rootNew)
-    --dump'SEARCH BACKWARD ENDED!\n\n'
-
     coroutine.resume(compareFrontCoroutine)
 
     file.tree = newTree
 
+    QT_commitElementChanges()
+
     return newTree
 end
 
+------------------------------------------------------------------------------------------------------------------ ELEMENT HANDLING
+
+---------------------------------------------------------
+function addElement(element, parent)
+    dump('ADD: ' .. element.table.name .. ' "' .. tostring(element.value) .. '" to parent ' .. tostring(parent and parent.table.name) .. '\n')
+    
+end
+
+---------------------------------------------------------
+function removeElement(element)
+    dump('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"\n')
+end
+
+---------------------------------------------------------
+function updateElement(oldElement, newElement)
+    dump('UPDATE: ' .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"\n')
+end
+
 ------------------------------------------------------------------------------------------------------------------ DEFAULT GRAMMAR
-local defaultGrammarAll = leaf{ name = 'text', pattern = lpeg.P(1)^0 }
 DefaultGrammar = lpeg.Ct({ 
     "Start",
-    Start = defaultGrammarAll(),
+    Start = (leaf{ name = 'text', pattern = lpeg.P(1)^0 })(),
 })
 
 ------------------------------------------------------------------------------------------------------------------ ENDING COMMANDS
 
 loadGrammars()
 
-dump '---------------------------------------------------------\n'
-dump 'Initialization script ended successfuly\n'
-
---local fullpath, openedfile
---fullpath, openedFile = openFile'../test input/input.arithmetic'
-
--- crawlAST(openedFile.tree)
-
-
--- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add nothing
--- openedFile.tree = reparseFile(fullpath, 'aaa + (1 + (2 + 3) + 4)') --> add to the beginning
---openedFile.tree = reparseFile(fullpath, [[((1) + 2) + (a + (100 + 10 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + (3 + (4))))))
---]]) --> add in the middle
-
---openedFile.tree = reparseFile(fullpath, [[a + ((1) + 2) + (a + (100 + 10 + 8)) + ((1) + 2) + (3 + (4 + ((1) + 2)+ x + (3 + (4  + ((1) + 2) + (3 + (4))))))
---]]) --> add in the middle
-
--- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the beginning with nodes
--- openedFile.tree = reparseFile(fullpath, '1 + 2 + 3 + 4') --> add to the end
-
---dump'\n\n'
---dumpAST(openedFile.tree)
+dump 'Initialization script ended successfuly\n\n'
 
 ---------------------------------------------------------
 -- DONT DELETE! LONG STRING TERMINATOR )";

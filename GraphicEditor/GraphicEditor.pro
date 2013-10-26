@@ -13,7 +13,7 @@ TEMPLATE = app
 
 CONFIG   += \
     c++11 \
-    console
+    console \
 
 SOURCES  += \
     main.cpp\
