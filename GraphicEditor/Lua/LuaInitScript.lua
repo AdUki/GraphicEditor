@@ -1,5 +1,5 @@
 #pragma once //"
-const char* luaInitScript = R"( -- LONG STRING BEGIN
+const char* luaInitScript = R"( -- DO NOT DELETE! LONG STRING BEGIN
 
 -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 io.stdout:setvbuf 'no'
@@ -25,6 +25,19 @@ Files = {
     tree = nil,
     absolutePath = nil,
 }
+LastFile = nil
+setmetatable(Files, {
+    __index = function(table, key) 
+        LastFile = table[key] or LastFile
+        return table[key]
+    end,
+
+    __newindex = function(table, key, value)
+        rawset(table, key, value) -- we must use rawset to avoid recursive assingments
+        LastFile = Files[key]
+        return value
+    end,
+})
 
 ---------------------------------------------------------
 -- Directly register file
@@ -43,7 +56,7 @@ function registerFile(name, text, grammarName)
         tree = {}
     }
 
-    dump ('File "' .. name .. '" registered with "' .. grammarName .. '" grammar\n')
+    dump ('File "' .. tostring(name) .. '" registered with "' .. grammarName .. '" grammar\n')
 
     if text then
         reparseFile(name, text)
@@ -58,7 +71,7 @@ function unregisterFile(name)
     assert(Files[name], name .. ': File is not registered!')
     Files[name] = nil
 
-    dump ('File "' .. name .. '" unregistered\n')
+    dump ('File "' .. tostring(name) .. '" unregistered\n')
 end
 
 ---------------------------------------------------------
@@ -66,7 +79,7 @@ function setFileAbsolutePath(name, path)
     local file = assert(Files[path], path .. ': File is not registered!')
     file.absolutePath = path
 
-    dump ('File "' .. name .. '" absolute path set to: ' .. path .. '\n')
+    dump ('File "' .. tostring(name) .. '" absolute path set to: ' .. path .. '\n')
 end
 
 ---------------------------------------------------------
@@ -77,16 +90,10 @@ function setFileGrammar(name, grammar)
     -- TODO: zmaz AST s osobitnou funkciou
     -- reparseFile(name, "")
 
-    file.grammar = newGrammar.grammar;
+    file.grammar = newGrammar;
     -- reparseFile(name, file.text)
 
-    dump ('File "' .. name .. '" switched to  "' .. grammar .. '" grammar\n')
-end
-
----------------------------------------------------------
-function updateFile(name, text)
-    local file = assert(Files[path], path .. ': File is not registered!')
-
+    dump ('File "' .. tostring(name) .. '" switched to  "' .. grammar .. '" grammar\n')
 end
 
 ------------------------------------------------------------------------------------------------------------------ GRAMMARS HANDLING
@@ -183,6 +190,7 @@ function leaf(var)
         lpeg.Cg(lpeg.Cp(), 'startIndex') *
         lpeg.Cg(lpeg.Cc(var), 'table') * 
         lpeg.Cg(var.pattern, 'value') *
+        lpeg.Cg(lpeg.Cc('leaf'), 'type') * 
         lpeg.Cg(lpeg.Cp(), 'endIndex')
     )
     
@@ -208,6 +216,7 @@ function node(var)
         lpeg.Cg(lpeg.Cp(), 'startIndex') *
         lpeg.Cg(lpeg.Cc(var), 'table') * 
         lpeg.Cg(lpeg.Ct(var.pattern), 'value') *
+        lpeg.Cg(lpeg.Cc('node'), 'type') * 
         lpeg.Cg(lpeg.Cp(), 'endIndex')
     )
 
@@ -228,7 +237,7 @@ function dumpAST(ast)
                 dump('\n')
                 tprint(node.value, indent + 3)
             else
-                dump('  v=' .. node.value .. '\n')
+                dump('  v="' .. node.value .. '"\n')
             end
         end
     end
@@ -333,10 +342,10 @@ function reparseFile(name, text)
 
     ---------------------------------------------------------
     local function checkForEnd(tbl1, tbl2)
-        -- Check if it is visited node
+        -- Check if it is done node
         if  tbl1 == nil and tbl2 == nil or
-            tbl1 and tbl1.visit == parseCycle and 
-            tbl2 and tbl2.visit == parseCycle
+            tbl1 and tbl1.done == parseCycle and 
+            tbl2 and tbl2.done == parseCycle
         then
             --dump 'END OF TREE!\n'
             return true
@@ -345,46 +354,62 @@ function reparseFile(name, text)
     end
 
     ---------------------------------------------------------
-    local function compareFront(old, new, parent)
+    local function frontIterator(old, new, index)
+        -- print ('front iterator '.. tostring(old) .. ' ' .. tostring(new) .. ' ' .. tostring(index))
+        compareTrees(
+            old and old.value[index], 
+            new and new.value[index], 
+            index,
+            index,
+            new)
+    end
+
+    ---------------------------------------------------------
+    local function backIterator(old, new, index)
+        -- print ('back iterator ' .. tostring(old) .. ' ' .. tostring(new) .. ' ' .. tostring(index))
+        compareTrees(
+            old and old.value[#old.value - index + 1], 
+            new and new.value[#new.value - index + 1], 
+            old and #old.value - index + 1,
+            new and #new.value - index + 1,
+            new)
+    end
+
+    ---------------------------------------------------------
+    function compareTrees(old, new, oldIndex, newIndex, parent)
+        -- print ('Compare oldIndex=' .. tostring(newIndex) .. ' newIndex' .. tostring(newIndex))
 
         -- Check if it is visited node
-        if  checkForEnd(old, new) then 
-            finishFront = true
-            return
-        end
-        if old and old.visit == parseCycle then old = nil end
-        if new and new.visit == parseCycle then new = nil end
+        if  checkForEnd(old, new) then return end
+        if old and old.done == parseCycle then old = nil end
+        if new and new.done == parseCycle then new = nil end
 
         -- Compare nodes
         if compareNodes(old, new) then
 
-            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                updateElement(old, new)
-            end
-
             -- Copy values from old
-            -- TODO: move references to new
+            new.instance = old.instance
+
+            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
+                updateElement(old, new, oldIndex, newIndex)
+            end
 
         else
-            -- If we havent search back then do it
-            if finishFront == false then
-                finishFront = true
-                dump 'START: backward search!\n'
-                -- Let compareBack() work his job
-                coroutine.yield()
-                -- Check if back search didnt marked our node
-                if  checkForEnd(old, new) then return end
-                if old and old.visit == parseCycle then old = nil end
-                if new and new.visit == parseCycle then new = nil end
-            end
+            -- Reverse direction of search
+            coroutine.yield()
+
+            -- Check if back search didnt marked our node
+            if  checkForEnd(old, new) then return end
 
             -- Remove old nodes
-            if old ~= nil then
-                removeElement(old);
+            if old ~= nil and old.visit ~= parseCycle then
+                removeElement(old, oldIndex);
+                old.visit = parseCycle
             end
             -- Add new nodes
-            if new ~= nil then
-                addElement(new, parent)
+            if new ~= nil and new.visit ~= parseCycle then
+                addElement(new, parent, newIndex)
+                new.visit = parseCycle
             end
 
         end
@@ -398,109 +423,67 @@ function reparseFile(name, text)
             
             -- Recursive search
             for index = 1, max, 1 do
-                compareFront(old and old.value[index], new and new.value[index], new)
-                if finishFront then return end
+                treeIterator(old, new, index)
+                if checkForEnd(old, new) then return end
             end
 
         end
 
-        -- Mark visit flags
-        if old then
-            old.visit = parseCycle
-        end
-        if new then
-            new.visit = parseCycle
-        end
-
-    end
-
-    ---------------------------------------------------------
-    local function compareBack(old, new, parent)
-
-        -- Check if it is visited node
-        if  checkForEnd(old, new) then 
-            finishBack = true
-            return 
-        end
-
-        if old and old.visit == parseCycle then old = nil end
-        if new and new.visit == parseCycle then new = nil end
-
-        -- Compare nodes
-        if compareNodes(old, new) then
-
-            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                updateElement(old, new)
-            end
-            -- Copy values from old
-            -- TODO: move references to new
-
-        else
-
-            -- Remove old nodes
-            if old ~= nil then
-                removeElement(old)
-            end
-
-            -- Add new nodes
-            if new ~= nil then
-                addElement(new, parent)
-            end
-
-        end
-
-        -- Check if it is node or leaf
-        if old and type(old.value) == 'table' or 
-           new and type(new.value) == 'table' then
-            
-            -- Find maximum
-            local max = findMaximum(old, new)
-            local oldSize = old and #old.value
-            local newSize = new and #new.value
-
-            -- Recursive search
-            for index = 1, max, 1 do
-                compareBack(old and old.value[oldSize - index + 1], new and new.value[newSize - index + 1], new)
-                if finishBack then return end
-            end
-
-        end
-
-        -- Mark visit flags
-        if old then
-            old.visit = parseCycle
-        end
-        if new then
-            new.visit = parseCycle
-        end
+        -- Mark done flags
+        if old then old.done = parseCycle end
+        if new then new.done = parseCycle end
 
     end
 
     ---------------------------------------------------------
     parseCycle = parseCycle + 1
 
-    local file = assert(Files[name], 'No opened file with ' .. name)
+    local file = assert(Files[name], 'No opened file: ' .. tostring(name))
     local oldTree = file.tree
     local newTree = file.grammar:match(text)
 
-    finishFront = false
-    finishBack = false
+    finishCompare = false
     
     assert(oldTree and newTree)
     
-    local compareFrontCoroutine = coroutine.create(compareFront)
-    local compareBackCoroutine = coroutine.create(compareBack)
+    local compareFrontCoroutine = coroutine.create(compareTrees)
+    local compareBackCoroutine = coroutine.create(compareTrees)
 
     local rootOld = { table = { name='root' }, value = oldTree }
     local rootNew = { table = { name='root' }, value = newTree }
 
-    coroutine.resume(compareFrontCoroutine, rootOld, rootNew)
-    compareBack(rootOld, rootNew)
-    coroutine.resume(compareFrontCoroutine)
+    treeIterator = frontIterator
+    -- dump 'START: front search!\n'
+    coroutine.resume(compareFrontCoroutine, rootOld, rootNew, 1, 1)
+
+    treeIterator = backIterator
+    -- dump 'START: back search!\n'
+    coroutine.resume(compareBackCoroutine, rootOld, rootNew, 1, 1)
+
+    -- Process tree until finished
+    local frontCourotineFinished = false
+    local backCourotineFinished = false
+    while true do
+
+        treeIterator = frontIterator
+        -- dump 'START: front search!\n'
+        if coroutine.resume(compareFrontCoroutine) == false then
+            frontCourotineFinished = true
+            if backCourotineFinished then break end
+        end
+
+        treeIterator = backIterator
+        -- dump 'START: back search!\n'
+        if coroutine.resume(compareBackCoroutine) == false then
+            backCourotineFinished = true
+            if frontCourotineFinished then break end
+        end
+    end
 
     file.tree = newTree
+    treeIterator = nil
 
-    QT_commitElementChanges()
+    dump "Reparsing file done!\n\n"
 
     return newTree
 end
@@ -508,25 +491,53 @@ end
 ------------------------------------------------------------------------------------------------------------------ ELEMENT HANDLING
 
 ---------------------------------------------------------
-function addElement(element, parent)
+-- Adds element from NEW TREE
+-- @param item from new tree
+-- @param parent from new tree
+-- @param index from parent from new tree
+function addElement(element, parent, index)
+    if element.value == "" then return end
+
     dump('ADD: ' .. element.table.name .. ' "' .. tostring(element.value) .. '" to parent ' .. tostring(parent and parent.table.name) .. '\n')
     
+    -- TODO formatovanie objektu
+    if element.type == 'node' then
+        element.instance = QT_addGrid(parent.instance, index)
+    elseif element.type == 'leaf' then
+        element.instance = QT_addItem(parent.instance, index)
+    end
+    -- dump('RETURNED: ' .. tostring(element.instance) .. '\n');
 end
 
 ---------------------------------------------------------
-function removeElement(element)
+-- Removes element from OLD TREE
+-- @param item from old tree
+-- @param index from parent from old tree
+function removeElement(element, index)
+    if element.value == "" then return end
+
     dump('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"\n')
+
+    if element.instance then
+        dump('RETURNED: ' .. tostring(element.instance) .. '\n');
+        QT_removeElement(element.instance)
+    end
 end
 
 ---------------------------------------------------------
-function updateElement(oldElement, newElement)
+function updateElement(oldElement, newElement, oldIndex, newIndex)
     dump('UPDATE: ' .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"\n')
+    QT_updateItem(newElement.instance, newElement.value)
 end
 
 ------------------------------------------------------------------------------------------------------------------ DEFAULT GRAMMAR
 DefaultGrammar = lpeg.Ct({ 
     "Start",
-    Start = (leaf{ name = 'text', pattern = lpeg.P(1)^0 })(),
+    Start = lpeg.V'Line' * (lpeg.V'NewLine' * lpeg.V'Line')^0,
+    Line = (node{ name = 'line', pattern = lpeg.V'Word' * (lpeg.V'Space' * lpeg.V'Word')^0 })(),
+    Word = (leaf{ name = 'word', pattern = lpeg.P(1 - lpeg.S' \t\n')^1 })(),
+    Space = (leaf{ name = 'space', pattern = lpeg.S' \t'^1 })(),
+    NewLine = (leaf{ name = 'newline', pattern = lpeg.S'\n'^1 })()
 })
 
 ------------------------------------------------------------------------------------------------------------------ ENDING COMMANDS
@@ -536,4 +547,4 @@ loadGrammars()
 dump 'Initialization script ended successfuly\n\n'
 
 ---------------------------------------------------------
--- DONT DELETE! LONG STRING TERMINATOR )";
+-- DON NOT DELETE! LONG STRING TERMINATOR )";

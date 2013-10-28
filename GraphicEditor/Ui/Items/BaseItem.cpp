@@ -1,10 +1,19 @@
 #include "BaseItem.h"
 
 #include <QPainter>
+#include <QDebug>
+#include <QGraphicsLinearLayout>
 
 ////////////////////////////////////////////////////////////////
-BaseItem::BaseItem()
+BaseItem::BaseItem(QGraphicsLayoutItem *parent)
+: QGraphicsLayoutItem(parent)
 {
+}
+
+////////////////////////////////////////////////////////////////
+BaseItem::~BaseItem()
+{
+    qDebug() << "~BaseItem()";
 }
 
 ////////////////////////////////////////////////////////////////
@@ -16,7 +25,8 @@ void BaseItem::setText(const QString &text)
 ////////////////////////////////////////////////////////////////
 QRectF BaseItem::boundingRect() const
 {
-    const QRectF& rect = QRectF(QPointF(0,0), measureSize());
+    QSizeF size = measureSize();
+    const QRectF& rect = QRectF(QPointF(0, 0), size);
     // TODO: pri editacii sa vrati text edit
     return rect;
 }
@@ -24,18 +34,24 @@ QRectF BaseItem::boundingRect() const
 ////////////////////////////////////////////////////////////////
 void BaseItem::setGeometry(const QRectF &rect)
 {
-    // Default is top left position
-//    prepareGeometryChange();
-//    QGraphicsLayoutItem::setGeometry(rect);
-
+    // Top left position for vertical layout
     QPointF position(rect.topLeft());
-    position.setY(position.y() - rect.height() / 2);
+
+    // Center position for horizontal layout
+    QGraphicsLinearLayout *layout = dynamic_cast<QGraphicsLinearLayout*>(parentLayoutItem());
+    if (layout != nullptr && layout->orientation() == Qt::Horizontal)
+        position.setY(position.y() + (layout->geometry().size().height() - rect.height()) / 2);
+
+    // Set position
     setPos(position.toPoint());
 }
 
 ////////////////////////////////////////////////////////////////
 QSizeF BaseItem::sizeHint(Qt::SizeHint which, const QSizeF &constraint) const
 {
+    Q_UNUSED(which);
+    Q_UNUSED(constraint);
+
     /*
     switch (which) {
     case Qt::MinimumSize: break;
@@ -65,7 +81,9 @@ void BaseItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
         QBrush(QColor(200,228,228)),
         QBrush(QColor(210,210,210)),
     };
-    painter->fillRect(boundingRect(), brush[cycle]);
+    QRectF bounds = boundingRect();
+
+    painter->fillRect(bounds, brush[cycle]);
     cycle = (cycle + 1) % 7;
 
 

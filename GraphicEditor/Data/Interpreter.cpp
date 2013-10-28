@@ -56,7 +56,7 @@ void Interpreter::loadInitScript()
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeRegisterFileCall(const QString& file)
+void Interpreter::makeRegisterFileCall(const void *file)
 {
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("registerFile");
@@ -65,7 +65,7 @@ void Interpreter::makeRegisterFileCall(const QString& file)
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeUnregisterFileCall(const QString& file)
+void Interpreter::makeUnregisterFileCall(const void *file)
 {
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("unregisterFile");
@@ -74,7 +74,7 @@ void Interpreter::makeUnregisterFileCall(const QString& file)
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeReparseFileCall(const QString& file, const QString& text)
+void Interpreter::makeReparseFileCall(const void *file, const QString& text)
 {
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("reparseFile");
@@ -84,7 +84,7 @@ void Interpreter::makeReparseFileCall(const QString& file, const QString& text)
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeSetFileAbsolutePathCall(const QString& file, const QString& name)
+void Interpreter::makeSetFileAbsolutePathCall(const void *file, const QString& name)
 {
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("setFileAbsolutePath");
@@ -94,7 +94,7 @@ void Interpreter::makeSetFileAbsolutePathCall(const QString& file, const QString
 }
 
 ////////////////////////////////////////////////////////////////
-void Interpreter::makeSetFileGrammarCall(const QString& file, const QString& grammar)
+void Interpreter::makeSetFileGrammarCall(const void *file, const QString& grammar)
 {
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("setFileGrammar");

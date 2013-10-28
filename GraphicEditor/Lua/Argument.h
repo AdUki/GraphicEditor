@@ -17,19 +17,24 @@ public:
     Argument(int number);
     Argument(const QByteArray& string);
     Argument(const QString& string);
+    Argument(const void* pointer);
 
     void setNumber(int number);
     void setString(const QByteArray& string);
+    void setPointer(const void* pointer);
     void pushToState(lua_State* L);
 
 private:
     enum class State {
         Uninitialized = 0,
         Number,
-        String
+        String,
+        Pointer
     };
 
     QByteArray _string;
     int _number;
+    const void* _pointer;
+
     State _state;
 };

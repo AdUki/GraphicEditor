@@ -3,7 +3,10 @@
 
 #include <QObject>
 
+class Root;
 class QFile;
+class QGraphicsWidget;
+class QGraphicsScene;
 
 class TextFile : public QObject
 {
@@ -18,6 +21,10 @@ public:
     bool isModified() const { return _modified; }
 
     QString getText() const { return _text; }
+    Root* getRoot();
+
+    void setScene(QGraphicsScene* scene);
+    void resetScene(QGraphicsScene* scene);
 
     void reparse() const;
     void setGrammar(const QString& grammar) const;
@@ -50,6 +57,8 @@ private:
     mutable QString _pointer;
     QString _text;
     QFile* _file;
+    Root* _root;
+    QGraphicsWidget* _container;
 
     bool _modified;
 

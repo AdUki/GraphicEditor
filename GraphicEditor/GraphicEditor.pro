@@ -31,7 +31,8 @@ SOURCES  += \
     Data/TextFile.cpp \
     Data/FileManager.cpp \
     Lua/LuaWorker.cpp \
-    Lua/Argument.cpp
+    Lua/Argument.cpp \
+    Ui/BaseElement.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -49,7 +50,8 @@ HEADERS  += \
     Data/TextFile.h \
     Data/FileManager.h \
     Lua/LuaWorker.h \
-    Lua/Argument.h
+    Lua/Argument.h \
+    Ui/BaseElement.h
 
 FORMS    += \
     mainwindow.ui
@@ -62,6 +64,7 @@ LIBS     += \
     -L$${LuaPath} -llua51
 
 INCLUDEPATH += \
+    D:\\boost_1_54_0 \
     $${LuaPath}
 
 DEPENDPATH += Lua/LuaInitScript.lua

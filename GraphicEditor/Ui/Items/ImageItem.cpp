@@ -2,6 +2,7 @@
 
 #include <QPainter>
 #include <QImage>
+#include <QDebug>
 
 ////////////////////////////////////////////////////////////////
 ImageItem::ImageItem(const QString& imageName)
@@ -14,6 +15,7 @@ ImageItem::ImageItem(const QString& imageName)
 ImageItem::~ImageItem()
 {
     delete _image;
+    qDebug() << "~ImageItem()";
 }
 
 ////////////////////////////////////////////////////////////////

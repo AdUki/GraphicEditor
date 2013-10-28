@@ -15,7 +15,8 @@
 #include "Ui/Grids/VerticalGrid.h"
 #include "Ui/Items/ImageItem.h"
 #include "Ui/Items/TextItem.h"
-#include "Ui/console.h"
+#include "Ui/Console.h"
+#include "Ui/Root.h"
 
 #include "Data/Interpreter.h"
 #include "Data/FileManager.h"
@@ -49,7 +50,7 @@ MainWindow::~MainWindow()
 ////////////////////////////////////////////////////////////////
 void MainWindow::createScene()
 {
-    QGraphicsScene* scene = new QGraphicsScene(this);
+    QGraphicsScene* scene = new QGraphicsScene();
     UI->graphicsView->setScene(scene);
 }
 
@@ -77,7 +78,6 @@ void MainWindow::createDockWidgets()
     connect(console, SIGNAL(executeCommand(QByteArray)),
             console, SLOT(waitForCommand()));
 
-
     QDockWidget *dock = new QDockWidget(tr("Console"), this);
     dock->setAllowedAreas(Qt::AllDockWidgetAreas);
     dock->setWidget(console);
@@ -90,13 +90,15 @@ void MainWindow::createConnections()
     _textEditFile = new TextFile();
 
     // Uspime thread, pretoze chceme, aby sa registroval novo vytvoreny file
-    std::chrono::milliseconds duration(100);
-    std::this_thread::sleep_for(duration);
+//    std::chrono::milliseconds duration(100);
+//    std::this_thread::sleep_for(duration);
 
-    _textEditFile->setGrammar("arithmetic");
+//    _textEditFile->setGrammar("arithmetic");
 
     connect(UI->reparseTextButton, SIGNAL(clicked()), this, SLOT(reparsePlainTextEdit()));
     connect(UI->plainTextEdit, SIGNAL(textChanged()), this, SLOT(reparsePlainTextEdit()));
+
+    _textEditFile->setScene(UI->graphicsView->scene());
 }
 
 ////////////////////////////////////////////////////////////////
@@ -110,14 +112,8 @@ void MainWindow::reparsePlainTextEdit()
 void MainWindow::testCanvas()
 {
     QGraphicsScene& scene = *UI->graphicsView->scene();
-//    BaseGrid* grid = new HorizontalGrid();
 
-    QGraphicsLinearLayout* grid = new QGraphicsLinearLayout(Qt::Vertical);
-//    grid->setSpacing(0);
-
-    QGraphicsWidget* container = new QGraphicsWidget;
-    container->setLayout(grid);
-    container->resize(QSizeF(100,100));
+    Root* grid = _textEditFile->getRoot();
 
     BaseItem* item;
 
@@ -126,37 +122,35 @@ void MainWindow::testCanvas()
     scene.addItem(item);
 
     for (int n = 0; n < 10; ++n) {
-        QGraphicsLinearLayout* subGrid = new QGraphicsLinearLayout(Qt::Horizontal);
-//        subGrid->setSpacing(0);
+        HorizontalGrid* subGrid = new HorizontalGrid();
+        scene.addItem(subGrid);
 
-        item = new TextItem("Aaaa bbb");
+        item = new TextItem("fff");
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("byby\nbyby");
+        item = new TextItem("eee");
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("Aaaa");
+        item = new TextItem("ddd\nddd");
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("byby");
+        item = new TextItem("ccc");
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("vvv");
+        item = new TextItem("bbb");
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("h j k l");
+        item = new TextItem("aaa");
         subGrid->addItem(item);
         scene.addItem(item);
 
         grid->addItem(subGrid);
     }
-
-    scene.addItem(container);
 }
 
 ////////////////////////////////////////////////////////////////

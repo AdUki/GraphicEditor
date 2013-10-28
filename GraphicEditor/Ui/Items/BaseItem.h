@@ -3,12 +3,16 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsLayoutItem>
 
+#include "../BaseElement.h"
+
 class BaseItem:
-        public QGraphicsLayoutItem,
-        public QGraphicsRectItem
+    public BaseElement,
+    public QGraphicsLayoutItem,
+    public QGraphicsRectItem
 {
 public:
-    explicit BaseItem();
+    explicit BaseItem(QGraphicsLayoutItem *parent = 0);
+    ~BaseItem() override;
 
     void setText(const QString& text);
 

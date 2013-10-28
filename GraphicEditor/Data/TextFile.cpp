@@ -4,6 +4,10 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QTextStream>
+#include <QGraphicsWidget>
+#include <QGraphicsScene>
+
+#include "Ui/Root.h"
 
 #include "./FileManager.h"
 #include "./Interpreter.h"
@@ -12,10 +16,12 @@
 TextFile::TextFile(QObject *parent)
     : QObject(parent)
     , _file(nullptr)
+    , _root(new Root())
+    , _container(nullptr)
     , _modified(false)
 {
     FileManager::getInstance()->addFile(this);
-    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
+    Interpreter::getInstance()->makeRegisterFileCall(this);
 
     qDebug() << QString("File " + thisToString() + " created");
 }
@@ -24,10 +30,12 @@ TextFile::TextFile(QObject *parent)
 TextFile::TextFile(const QString& fileName, QObject *parent)
     : QObject(parent)
     , _file(nullptr)
+    , _root(new Root())
+    , _container(nullptr)
     , _modified(false)
 {
     FileManager::getInstance()->addFile(this);
-    Interpreter::getInstance()->makeRegisterFileCall(thisToString());
+    Interpreter::getInstance()->makeRegisterFileCall(this);
 
     open(fileName);
 
@@ -37,7 +45,7 @@ TextFile::TextFile(const QString& fileName, QObject *parent)
 ////////////////////////////////////////////////////////////////
 TextFile::~TextFile()
 {
-    Interpreter::getInstance()->makeUnregisterFileCall(thisToString());
+    Interpreter::getInstance()->makeUnregisterFileCall(this);
     qDebug() << "File " + thisToString() + " closed";
 }
 
@@ -47,6 +55,36 @@ void TextFile::setText(const QString &text)
     _modified = true;
     _text = text;
     emit changed(_text);
+}
+
+////////////////////////////////////////////////////////////////
+Root* TextFile::getRoot()
+{
+    return _root;
+}
+
+////////////////////////////////////////////////////////////////
+void TextFile::setScene(QGraphicsScene* scene)
+{
+    Q_ASSERT(_container == nullptr);
+
+    scene->addItem(_root);
+
+    _container = new QGraphicsWidget;
+    _container->setLayout(_root);
+    scene->addItem(_container);
+}
+
+////////////////////////////////////////////////////////////////
+void TextFile::resetScene(QGraphicsScene* scene)
+{
+    if (_container == nullptr)
+        return;
+
+    scene->removeItem(_container);
+    scene->removeItem(_root);
+
+    delete _container;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -101,7 +139,7 @@ void TextFile::open(const QString& filename)
     _text = in.readAll();
 
     QFileInfo info(*_file);
-    Interpreter::getInstance()->makeSetFileAbsolutePathCall(thisToString(), info.absolutePath());
+    Interpreter::getInstance()->makeSetFileAbsolutePathCall(this, info.absolutePath());
 
     emit opened(_text);
 }
@@ -160,13 +198,13 @@ void TextFile::close()
 ////////////////////////////////////////////////////////////////
 void TextFile::reparse() const
 {
-    Interpreter::getInstance()->makeReparseFileCall(thisToString(), _text);
+    Interpreter::getInstance()->makeReparseFileCall(this, _text);
 }
 
 ////////////////////////////////////////////////////////////////
 void TextFile::setGrammar(const QString &grammar) const
 {
-    Interpreter::getInstance()->makeSetFileGrammarCall(thisToString(), grammar);
+    Interpreter::getInstance()->makeSetFileGrammarCall(this, grammar);
 }
 
 ////////////////////////////////////////////////////////////////

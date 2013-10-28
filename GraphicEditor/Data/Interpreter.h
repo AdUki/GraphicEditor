@@ -30,11 +30,11 @@ signals:
 
 public slots:
     ////////////////////////////////////////////////////////////////
-    void makeRegisterFileCall(const QString& file);
-    void makeUnregisterFileCall(const QString& file);
-    void makeReparseFileCall(const QString& file, const QString& text);
-    void makeSetFileAbsolutePathCall(const QString& file, const QString& name);
-    void makeSetFileGrammarCall(const QString& file, const QString& grammar);
+    void makeRegisterFileCall(const void *file);
+    void makeUnregisterFileCall(const void *file);
+    void makeReparseFileCall(const void *file, const QString& text);
+    void makeSetFileAbsolutePathCall(const void *file, const QString& name);
+    void makeSetFileGrammarCall(const void *file, const QString& grammar);
 
     ////////////////////////////////////////////////////////////////
     void makeProtectedCall(const QByteArray& call);

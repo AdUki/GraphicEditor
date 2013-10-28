@@ -5,8 +5,8 @@ sed '1,3 s/.*/ /' Lua/LuaInitScript.lua > luaInitScript.lua
 
 # Set up functions that are from qt application
 echo 'QT_commitElementChanges = function() end' >> luaInitScript.lua
-echo 'QT_updateElement = function() end' >> luaInitScript.lua
-echo 'QT_addElement = function() end' >> luaInitScript.lua
+echo 'QT_addItem = function() end' >> luaInitScript.lua
+echo 'QT_addGrid = function() end' >> luaInitScript.lua
 echo 'QT_removeElement = function() end' >> luaInitScript.lua
 
 # Append to created file test.lua file

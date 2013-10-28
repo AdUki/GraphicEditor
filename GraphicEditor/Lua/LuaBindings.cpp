@@ -3,6 +3,13 @@
 #include <QObject>
 #include <QDebug>
 
+#include <boost/icl/interval_map.hpp>
+
+#include "Ui/Items/BaseItem.h"
+#include "Ui/Items/TextItem.h"
+#include "Ui/Grids/BaseGrid.h"
+#include "Ui/Grids/HorizontalGrid.h"
+
 #include "Data/Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
@@ -13,10 +20,10 @@
 ////////////////////////////////////////////////////////////////
 void createBindings(lua_State* L)
 {
-    BIND_C_FUNCTION(QT_addElement);
-    BIND_C_FUNCTION(QT_updateElement);
+    BIND_C_FUNCTION(QT_addGrid);
+    BIND_C_FUNCTION(QT_addItem);
+    BIND_C_FUNCTION(QT_updateItem);
     BIND_C_FUNCTION(QT_removeElement);
-    BIND_C_FUNCTION(QT_commitElementChanges);
 
     BIND_C_FUNCTION(openFile);
     BIND_C_FUNCTION(closeFile);
@@ -26,59 +33,103 @@ void createBindings(lua_State* L)
 }
 
 ////////////////////////////////////////////////////////////////
-QList<QObject*> elementsToAdd;
-QList<QObject*> elementsToRemove;
+struct ElementAllocator
+{
+    int startIndex;
+    int endIndex;
+
+    // TODO: formatovanie elementov
+    std::string format;
+
+    BaseItem** item;
+    BaseGrid** grid;
+};
+
+QList<ElementAllocator> elementsToAdd;
+QList<ElementAllocator> elementsToRemove;
+QList<ElementAllocator> elementsToUpdate;
+
+typedef boost::icl::left_open_interval<int> Interval;
+typedef boost::icl::interval_map<Interval, BaseItem*> ItemsTree;
+typedef boost::icl::interval_map<Interval, BaseGrid*> GridsTree;
 
 ////////////////////////////////////////////////////////////////
-int QT_addElement(lua_State* L)
+/// Parameters from Lua:
+/// (QObject**) pointer to pointer of parent, is null if parent is root
+/// (int) index from parent from new tree
+/// returns pointer to pointer of created object
+int QT_addItem(lua_State* L)
 {
-    lua_tostring(L, 1);
-
-
-    qDebug() << "Add element";
+    BaseItem** parent = static_cast<BaseItem**>(lua_touserdata(L, 1));
 
     // TODO: Spravit elementFactory, aby nam vyrabala elementy...
     //       Faktory vyraba elementy v novom threade, lebo interpreter v nom bezi
     //       Faktory moze reusovat zmazane elementy
-    QObject* newElement = new QObject();
+    void* newElement = new (void*)();
+    Q_ASSERT(newElement != nullptr);
+    qDebug() << "Add item " << newElement;
 
-    lua_pushlightuserdata(L, static_cast<void*>(newElement));
+    lua_pushlightuserdata(L, newElement);
+
+    // TODO: testovaci kod, objekty sa alokuju az po QT_commitChagnes
+    BaseItem** element = static_cast<BaseItem**>(newElement);
+    *element = new TextItem("TEST");
 
     return 1;
 }
 
 ////////////////////////////////////////////////////////////////
-int QT_updateElement(lua_State* L)
+/// Parameters from Lua:
+/// (QObject**) pointer to pointer of parent, is null if parent is root
+/// (int) index from parent from new tree
+/// returns pointer to pointer of created object
+int QT_addGrid(lua_State* L)
 {
-    Q_UNUSED(L);
+    BaseGrid** parent = static_cast<BaseGrid**>(lua_touserdata(L, 1));
 
-    //TODO: implementacia
+    // TODO: Spravit elementFactory, aby nam vyrabala elementy...
+    //       Faktory vyraba elementy v novom threade, lebo interpreter v nom bezi
+    //       Faktory moze reusovat zmazane elementy
+    void* newElement = new (void*)();
+    Q_ASSERT(newElement != nullptr);
+    qDebug() << "Add grid " << newElement;
 
-    qDebug() << "Update element";
+    lua_pushlightuserdata(L, newElement);
+
+    // TODO: testovaci kod, objekty sa alokuju az po QT_commitChagnes
+    BaseGrid** element = static_cast<BaseGrid**>(newElement);
+    *element = new HorizontalGrid();
+
+    return 1;
+}
+
+////////////////////////////////////////////////////////////////
+/// Parameters from Lua:
+/// (QObject**) pointer to pointer of parent, is null if parent is root
+/// (char*) new text of element on which is element going to be updated
+int QT_updateItem(lua_State* L)
+{
+    BaseItem** element = static_cast<BaseItem**>(lua_touserdata(L, 1));
+
+    qDebug() << "Update element " << static_cast<void*>(element);
 
     return 0;
 }
 
 ////////////////////////////////////////////////////////////////
+/// Parameters from Lua:
+/// (QObject**) pointer to pointer of existing object
 int QT_removeElement(lua_State* L)
 {
-    Q_UNUSED(L);
+    BaseItem** element = static_cast<BaseItem**>(lua_touserdata(L, 1));
 
-    //TODO: implementacia
+    qDebug() << "Remove element " << static_cast<void*>(element);
 
-    qDebug() << "Remove element";
+    // Remove created object
+    delete static_cast<BaseItem*>(*element);
 
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////
-int QT_commitElementChanges(lua_State* L)
-{
-    Q_UNUSED(L);
-
-    //TODO: implementacia
-
-    qDebug() << "Committing element changes";
+    // Remove allocated pointer
+    delete element;
 
     return 0;
 }
