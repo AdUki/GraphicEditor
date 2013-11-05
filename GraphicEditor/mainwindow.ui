@@ -24,9 +24,9 @@
        <widget class="QPlainTextEdit" name="plainTextEdit"/>
       </item>
       <item>
-       <widget class="QPushButton" name="reparseTextButton">
+       <widget class="QPushButton" name="reloadCanvasButton">
         <property name="text">
-         <string>Reparse text</string>
+         <string>Reload Canvas</string>
         </property>
        </widget>
       </item>

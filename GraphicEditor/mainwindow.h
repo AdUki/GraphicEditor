@@ -20,6 +20,7 @@ public:
     
 private slots:
     void reparsePlainTextEdit();
+    void reloadCanvas();
 
 private:
     Ui::MainWindow *UI;
@@ -31,6 +32,7 @@ private:
     void createConnections();
 
     void testCanvas();
+    void testAllocator();
     void testFileManager();
 };
 

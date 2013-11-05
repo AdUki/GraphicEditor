@@ -10,17 +10,20 @@
 #include <QGraphicsLinearLayout>
 #include <QGraphicsWidget>
 #include <QDebug>
+#include <QThread>
 
 #include "Ui/Grids/HorizontalGrid.h"
 #include "Ui/Grids/VerticalGrid.h"
 #include "Ui/Items/ImageItem.h"
 #include "Ui/Items/TextItem.h"
 #include "Ui/Console.h"
-#include "Ui/Root.h"
 
 #include "Data/Interpreter.h"
 #include "Data/FileManager.h"
 #include "Data/TextFile.h"
+#include "Data/ElementManager.h"
+
+#include "Lua/ElementAllocator.h"
 
 ////////////////////////////////////////////////////////////////
 MainWindow::MainWindow(QWidget *parent) :
@@ -34,13 +37,16 @@ MainWindow::MainWindow(QWidget *parent) :
     createConnections();
 
 //    testCanvas();
+//    testAllocator();
 //    testFileManager();
 }
 
 ////////////////////////////////////////////////////////////////
 MainWindow::~MainWindow()
 {
-    // NOTE: Poradie je dolezite! Interpreter sa musi zmazat ako posledny!
+    // NOTE: Clean up singletons here:
+    // NOTE: Order is important! Interpreter must be deleted last!
+    delete ElementManager::getInstance();
     delete FileManager::getInstance();
     delete Interpreter::getInstance();
 
@@ -52,6 +58,7 @@ void MainWindow::createScene()
 {
     QGraphicsScene* scene = new QGraphicsScene();
     UI->graphicsView->setScene(scene);
+    ElementManager::getInstance()->setScene(scene);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -90,15 +97,23 @@ void MainWindow::createConnections()
     _textEditFile = new TextFile();
 
     // Uspime thread, pretoze chceme, aby sa registroval novo vytvoreny file
-//    std::chrono::milliseconds duration(100);
-//    std::this_thread::sleep_for(duration);
+    std::chrono::milliseconds duration(100);
+    std::this_thread::sleep_for(duration);
 
-//    _textEditFile->setGrammar("arithmetic");
+    _textEditFile->setGrammar("arithmetic");
 
-    connect(UI->reparseTextButton, SIGNAL(clicked()), this, SLOT(reparsePlainTextEdit()));
+    connect(UI->reloadCanvasButton, SIGNAL(clicked()), this, SLOT(reloadCanvas()));
     connect(UI->plainTextEdit, SIGNAL(textChanged()), this, SLOT(reparsePlainTextEdit()));
 
     _textEditFile->setScene(UI->graphicsView->scene());
+
+    ElementManager::getInstance()->setRoot(_textEditFile->getRoot());
+}
+
+////////////////////////////////////////////////////////////////
+void MainWindow::reloadCanvas()
+{
+    UI->graphicsView->scene()->update();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -113,23 +128,35 @@ void MainWindow::testCanvas()
 {
     QGraphicsScene& scene = *UI->graphicsView->scene();
 
-    Root* grid = _textEditFile->getRoot();
+    BaseGrid* grid = _textEditFile->getRoot();
 
     BaseItem* item;
 
     item = new ImageItem("D:\\cog.png");
-    grid->addItem(item);
+    grid->insertElement(item, -1);
     scene.addItem(item);
+
+    QList<BaseItem*> itemsToBeDeleted;
 
     for (int n = 0; n < 10; ++n) {
         HorizontalGrid* subGrid = new HorizontalGrid();
         scene.addItem(subGrid);
+
+        item = new TextItem("!DELETE ME!");
+        itemsToBeDeleted.push_back(item);
+        subGrid->addItem(item);
+        scene.addItem(item);
 
         item = new TextItem("fff");
         subGrid->addItem(item);
         scene.addItem(item);
 
         item = new TextItem("eee");
+        subGrid->addItem(item);
+        scene.addItem(item);
+
+        item = new TextItem("!DELETE ME!");
+        itemsToBeDeleted.push_back(item);
         subGrid->addItem(item);
         scene.addItem(item);
 
@@ -145,12 +172,49 @@ void MainWindow::testCanvas()
         subGrid->addItem(item);
         scene.addItem(item);
 
-        item = new TextItem("aaa");
+        item = new TextItem("!DELETE ME!");
+        itemsToBeDeleted.push_back(item);
         subGrid->addItem(item);
         scene.addItem(item);
 
-        grid->addItem(subGrid);
+        grid->insertElement(subGrid, -1);
     }
+
+    for (BaseItem* item : itemsToBeDeleted) {
+        scene.removeItem(item);
+        delete item;
+    }
+}
+
+////////////////////////////////////////////////////////////////
+void MainWindow::testAllocator()
+{
+    // Alokate allocators
+    ElementAllocator* gridAllocator = new ElementAllocator(nullptr);
+    ElementAllocator* item1Allocator = new ElementAllocator(gridAllocator->allocatedPointer);
+    ElementAllocator* item2Allocator = new ElementAllocator(gridAllocator->allocatedPointer);
+
+    // Create items
+    QGraphicsScene& scene = *UI->graphicsView->scene();
+    BaseGrid* root = _textEditFile->getRoot();
+
+    BaseGrid* grid = gridAllocator->allocatePointer<BaseGrid>(new HorizontalGrid());
+    root->insertElement(grid, -1);
+    scene.addItem(grid);
+
+    delete gridAllocator;
+
+    BaseItem* item = item1Allocator->allocatePointer<BaseItem>(new TextItem("test"));
+    item1Allocator->getParent()->insertElement(item, -1);
+    scene.addItem(item);
+
+    delete item1Allocator;
+
+    item = item2Allocator->allocatePointer<BaseItem>(new TextItem("test 2"));
+    item2Allocator->getParent()->insertElement(item, -1);
+    scene.addItem(item);
+
+    delete item2Allocator;
 }
 
 ////////////////////////////////////////////////////////////////
