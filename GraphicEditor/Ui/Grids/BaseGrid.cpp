@@ -2,11 +2,24 @@
 
 #include <QPainter>
 #include <QDebug>
+#include <QGraphicsLayout>
+
+BaseGrid::BaseGrid()
+{
+    qDebug() << "BaseGrid()";
+}
 
 ////////////////////////////////////////////////////////////////
 BaseGrid::~BaseGrid()
 {
     qDebug() << "~BaseGrid()";
+}
+
+////////////////////////////////////////////////////////////////
+QGraphicsLayout* BaseGrid::layout() {
+    QGraphicsLayout* layout = dynamic_cast<QGraphicsLayout*>(dynamic_cast<BaseGrid*>(this));
+    Q_ASSERT(layout != nullptr);
+    return layout;
 }
 
 ////////////////////////////////////////////////////////////////

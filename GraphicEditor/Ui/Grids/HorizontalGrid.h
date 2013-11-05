@@ -1,15 +1,10 @@
 #pragma once
 
-#include "./BaseGrid.h"
-
-#include <QGraphicsLinearLayout>
+#include "./LinearGrid.h"
 
 class HorizontalGrid :
-    public QGraphicsLinearLayout,
-    public BaseGrid
+    public LinearGrid
 {
 public:
     HorizontalGrid(QGraphicsLayoutItem *parent = 0);
-
-    QRectF boundingRect() const override;
 };

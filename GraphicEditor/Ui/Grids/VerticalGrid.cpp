@@ -1,15 +1,11 @@
 #include "VerticalGrid.h"
 
-////////////////////////////////////////////////////////////////
-VerticalGrid::VerticalGrid(QGraphicsLayoutItem *parent)
-: QGraphicsLinearLayout(Qt::Vertical, parent)
-, BaseGrid()
-{
-}
+#include <QDebug>
+
+#include "../Items/BaseItem.h"
 
 ////////////////////////////////////////////////////////////////
-QRectF VerticalGrid::boundingRect() const
+VerticalGrid::VerticalGrid(QGraphicsLayoutItem *parent)
+: LinearGrid(Qt::Vertical, parent)
 {
-//    QRectF bounds(this->pos(), sizeHint(Qt::PreferredSize));
-    return geometry();
 }

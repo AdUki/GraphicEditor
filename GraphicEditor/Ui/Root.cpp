@@ -1,8 +1,0 @@
-#include "Root.h"
-
-////////////////////////////////////////////////////////////////
-Root::Root()
-: QGraphicsLinearLayout(Qt::Vertical)
-{
-
-}

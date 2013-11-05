@@ -1,15 +1,11 @@
 #include "HorizontalGrid.h"
 
-////////////////////////////////////////////////////////////////
-HorizontalGrid::HorizontalGrid(QGraphicsLayoutItem *parent)
-: QGraphicsLinearLayout(Qt::Horizontal, parent)
-, BaseGrid()
-{
-}
+#include <QDebug>
+
+#include "../Items/BaseItem.h"
 
 ////////////////////////////////////////////////////////////////
-QRectF HorizontalGrid::boundingRect() const
+HorizontalGrid::HorizontalGrid(QGraphicsLayoutItem *parent)
+: LinearGrid(Qt::Horizontal, parent)
 {
-//    QRectF bounds(this->pos(), sizeHint(Qt::PreferredSize));
-    return geometry();
 }
