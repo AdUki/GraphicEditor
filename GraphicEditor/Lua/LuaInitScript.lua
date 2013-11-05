@@ -56,7 +56,7 @@ function registerFile(name, text, grammarName)
         tree = {}
     }
 
-    dump ('File "' .. tostring(name) .. '" registered with "' .. grammarName .. '" grammar\n')
+    dump ('File "' .. tostring(name) .. '" registered with "' .. grammarName .. '" grammar')
 
     if text then
         reparseFile(name, text)
@@ -68,23 +68,23 @@ end
 -- Closes / unregisters file
 -- @param path (string) path to file
 function unregisterFile(name)
-    assert(Files[name], name .. ': File is not registered!')
+    assert(Files[name], tostring(name) .. ': File is not registered!')
     Files[name] = nil
 
-    dump ('File "' .. tostring(name) .. '" unregistered\n')
+    dump ('File "' .. tostring(name) .. '" unregistered')
 end
 
 ---------------------------------------------------------
 function setFileAbsolutePath(name, path)
-    local file = assert(Files[path], path .. ': File is not registered!')
+    local file = assert(Files[name], path .. ': File is not registered!')
     file.absolutePath = path
 
-    dump ('File "' .. tostring(name) .. '" absolute path set to: ' .. path .. '\n')
+    dump ('File "' .. tostring(name) .. '" absolute path set to: ' .. path .. '')
 end
 
 ---------------------------------------------------------
 function setFileGrammar(name, grammar)
-    local file = assert(Files[name], name .. ': File is not registered!')
+    local file = assert(Files[name], tostring(name) .. ': File is not registered!')
     local newGrammar = assert(Grammars[grammar], 'No grammar "'.. grammar .. '" defined')
 
     -- TODO: zmaz AST s osobitnou funkciou
@@ -93,7 +93,7 @@ function setFileGrammar(name, grammar)
     file.grammar = newGrammar;
     -- reparseFile(name, file.text)
 
-    dump ('File "' .. tostring(name) .. '" switched to  "' .. grammar .. '" grammar\n')
+    dump ('File "' .. tostring(name) .. '" switched to  "' .. grammar .. '" grammar')
 end
 
 ------------------------------------------------------------------------------------------------------------------ GRAMMARS HANDLING
@@ -133,7 +133,7 @@ function loadGrammars()
     end
 
     if count == 0 then
-        dump "Warning: No grammars loaded!\n"
+        dump "Warning: No grammars loaded!"
     end
 end
 
@@ -242,7 +242,6 @@ function dumpAST(ast)
         end
     end
     tprint(ast, 0)
-    dump'\n'
 end
 
 ---------------------------------------------------------
@@ -324,6 +323,8 @@ local parseCycle = 0
 -- @param
 function reparseFile(name, text)
 
+    print "\nReparsing file...\n==============================================="
+
     ---------------------------------------------------------
     local function compareNodes(node1, node2)
         if node1 == nil or node2 == nil then 
@@ -379,10 +380,16 @@ function reparseFile(name, text)
     function compareTrees(old, new, oldIndex, newIndex, parent)
         -- print ('Compare oldIndex=' .. tostring(newIndex) .. ' newIndex' .. tostring(newIndex))
 
-        -- Check if it is visited node
+        -- Check if it is done node
         if  checkForEnd(old, new) then return end
         if old and old.done == parseCycle then old = nil end
         if new and new.done == parseCycle then new = nil end
+
+        -- print("Comparing [" .. 
+        --     tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
+        --     .. "] with [" .. 
+        --     tostring(new and new.table.name) .. "," .. tostring(new and new.value) 
+        --     .. "]")
 
         -- Compare nodes
         if compareNodes(old, new) then
@@ -396,20 +403,19 @@ function reparseFile(name, text)
 
         else
             -- Reverse direction of search
+            -- dump("!REVERSE!\n")
             coroutine.yield()
 
             -- Check if back search didnt marked our node
             if  checkForEnd(old, new) then return end
 
             -- Remove old nodes
-            if old ~= nil and old.visit ~= parseCycle then
+            if old ~= nil and old.done ~= parseCycle then
                 removeElement(old, oldIndex);
-                old.visit = parseCycle
             end
             -- Add new nodes
-            if new ~= nil and new.visit ~= parseCycle then
+            if new ~= nil and new.done ~= parseCycle then
                 addElement(new, parent, newIndex)
-                new.visit = parseCycle
             end
 
         end
@@ -443,8 +449,6 @@ function reparseFile(name, text)
     local newTree = file.grammar:match(text)
 
     finishCompare = false
-    
-    assert(oldTree and newTree)
     
     local compareFrontCoroutine = coroutine.create(compareTrees)
     local compareBackCoroutine = coroutine.create(compareTrees)
@@ -483,7 +487,7 @@ function reparseFile(name, text)
     file.tree = newTree
     treeIterator = nil
 
-    dump "Reparsing file done!\n\n"
+    print "Reparsing file done!\n"
 
     return newTree
 end
@@ -496,17 +500,18 @@ end
 -- @param parent from new tree
 -- @param index from parent from new tree
 function addElement(element, parent, index)
-    if element.value == "" then return end
-
-    dump('ADD: ' .. element.table.name .. ' "' .. tostring(element.value) .. '" to parent ' .. tostring(parent and parent.table.name) .. '\n')
     
+    index = index - 1
+
     -- TODO formatovanie objektu
     if element.type == 'node' then
-        element.instance = QT_addGrid(parent.instance, index)
+        element.instance = QT_addGrid(parent.instance, index )
     elseif element.type == 'leaf' then
-        element.instance = QT_addItem(parent.instance, index)
+        element.instance = QT_addItem(parent.instance, index , element.value)
     end
-    -- dump('RETURNED: ' .. tostring(element.instance) .. '\n');
+
+    print('ADD: {' .. tostring(element.instance) .. ' ' .. element.table.name .. ' "' .. tostring(element.value) 
+        .. '"} to parent {' .. tostring(parent.instance) .. ' ' .. tostring(parent and parent.table.name) .. '} at index ' .. tostring(index + 1))
 end
 
 ---------------------------------------------------------
@@ -516,17 +521,17 @@ end
 function removeElement(element, index)
     if element.value == "" then return end
 
-    dump('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"\n')
+    print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"\n')
 
     if element.instance then
-        dump('RETURNED: ' .. tostring(element.instance) .. '\n');
+        -- dump('RETURNED: ' .. tostring(element.instance) .. '\n');
         QT_removeElement(element.instance)
     end
 end
 
 ---------------------------------------------------------
 function updateElement(oldElement, newElement, oldIndex, newIndex)
-    dump('UPDATE: ' .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"\n')
+    print('UPDATE: ' .. tostring(newElement.instance) .. ' '  .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"')
     QT_updateItem(newElement.instance, newElement.value)
 end
 
