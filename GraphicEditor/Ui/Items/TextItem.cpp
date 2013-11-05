@@ -5,10 +5,11 @@
 #include <QDebug>
 
 ////////////////////////////////////////////////////////////////
-TextItem::TextItem(const QString& text)
-    : BaseItem()
-    , _displayText(text)
+TextItem::TextItem(const QString& text, QGraphicsLayoutItem *parent)
+    : BaseItem(parent)
 {
+    _text = text;
+
     QFont font;
     font.setPointSize(11);
     font.setBold(false);
@@ -23,17 +24,6 @@ TextItem::~TextItem()
 }
 
 ////////////////////////////////////////////////////////////////
-void TextItem::setDisplayText(const QString& text)
-{
-    if (text == _displayText)
-        return;
-
-    _displayText = text;
-
-    // TODO: call requestRedraw/Layout
-}
-
-////////////////////////////////////////////////////////////////
 void TextItem::setFont(const QFont &font)
 {
     _font = font;
@@ -44,7 +34,7 @@ void TextItem::setFont(const QFont &font)
 QSizeF TextItem::measureSize() const
 {
     QFontMetrics fm(_font);
-    const QSizeF& size = fm.size(Qt::TextExpandTabs, _displayText);
+    const QSizeF& size = fm.size(Qt::TextExpandTabs, _text);
     // NOTE: flag Qt::TextSingleLine ignores newline characters.
     return size;
 }
@@ -55,5 +45,5 @@ void TextItem::draw(QPainter *painter, const QRectF& bounds)
     painter->setFont(_font);
 
     // TODO: mozno bude treba specialne handlovat novy riadok
-    painter->drawText(bounds, _displayText);
+    painter->drawText(bounds, _text);
 }

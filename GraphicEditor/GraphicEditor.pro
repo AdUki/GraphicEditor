@@ -27,12 +27,16 @@ SOURCES  += \
     Ui/Items/TextItem.cpp \
     Ui/Items/ImageItem.cpp \
     Ui/Items/BaseItem.cpp \
-    Ui/Root.cpp \
     Data/TextFile.cpp \
     Data/FileManager.cpp \
     Lua/LuaWorker.cpp \
     Lua/Argument.cpp \
-    Ui/BaseElement.cpp
+    Ui/BaseElement.cpp \
+    Lua/ElementAllocator.cpp \
+    Lua/ElementDeleter.cpp \
+    Lua/ElementUpdater.cpp \
+    Data/ElementManager.cpp \
+    Ui/Grids/LinearGrid.cpp
 
 HEADERS  += \
     mainwindow.h \
@@ -46,12 +50,16 @@ HEADERS  += \
     Ui/Items/TextItem.h \
     Ui/Items/ImageItem.h \
     Ui/Items/BaseItem.h \
-    Ui/Root.h \
     Data/TextFile.h \
     Data/FileManager.h \
     Lua/LuaWorker.h \
     Lua/Argument.h \
-    Ui/BaseElement.h
+    Ui/BaseElement.h \
+    Lua/ElementAllocator.h \
+    Lua/ElementDeleter.h \
+    Lua/ElementUpdater.h \
+    Data/ElementManager.h \
+    Ui/Grids/LinearGrid.h
 
 FORMS    += \
     mainwindow.ui

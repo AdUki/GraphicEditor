@@ -45,6 +45,8 @@ private:
     const static QColor ErrorColor;
     const static QColor SystemColor;
 
+    bool _somethingWritten;
+
     QString _command;
     QList<QString> _commandHistory;
     int _historyIndex;

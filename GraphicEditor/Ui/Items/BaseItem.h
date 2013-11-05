@@ -30,8 +30,9 @@ public:
     void updateGeometry() override;
     */
 
+protected:
+    QString _text;
+
 private:
     friend class BaseGrid;
-
-    QString _text;
 };

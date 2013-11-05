@@ -12,6 +12,7 @@ const QColor Console::SystemColor = QColor::fromRgb(0,0,255);
 ////////////////////////////////////////////////////////////////
 Console::Console(QWidget *parent)
 : QTextEdit(parent)
+, _somethingWritten(false)
 , _historyIndex(-1)
 {
     setStyleSheet(R"(
@@ -55,6 +56,7 @@ void Console::writeSystem(const QString& message)
     setTextColor(SystemColor);
     insertPlainText(message);
     ensureCursorVisible();
+    _somethingWritten = true;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -63,6 +65,7 @@ void Console::writeOutput(const QByteArray& data)
     setTextColor(OutputColor);
     insertPlainText(data);
     ensureCursorVisible();
+    _somethingWritten = true;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -71,6 +74,7 @@ void Console::writeError(const QByteArray& data)
     setTextColor(ErrorColor);
     insertPlainText(data);
     ensureCursorVisible();
+    _somethingWritten = true;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -88,8 +92,11 @@ void Console::confirmCommand()
 ////////////////////////////////////////////////////////////////
 void Console::writeCommandSign()
 {
-    setTextColor(SystemColor);
-    insertPlainText(">");
+    if (_somethingWritten) {
+        setTextColor(SystemColor);
+        insertPlainText("\n>");
+        _somethingWritten = false;
+    }
 }
 
 ////////////////////////////////////////////////////////////////

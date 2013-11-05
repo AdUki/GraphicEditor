@@ -7,7 +7,8 @@
 #include <QGraphicsWidget>
 #include <QGraphicsScene>
 
-#include "Ui/Root.h"
+#include "Ui/Grids/BaseGrid.h"
+#include "Ui/Grids/VerticalGrid.h"
 
 #include "./FileManager.h"
 #include "./Interpreter.h"
@@ -16,7 +17,7 @@
 TextFile::TextFile(QObject *parent)
     : QObject(parent)
     , _file(nullptr)
-    , _root(new Root())
+    , _root(new VerticalGrid()) // TODO: subclassovat BaseGrid a vytvorit Root
     , _container(nullptr)
     , _modified(false)
 {
@@ -30,7 +31,7 @@ TextFile::TextFile(QObject *parent)
 TextFile::TextFile(const QString& fileName, QObject *parent)
     : QObject(parent)
     , _file(nullptr)
-    , _root(new Root())
+    , _root(new VerticalGrid())
     , _container(nullptr)
     , _modified(false)
 {
@@ -58,7 +59,7 @@ void TextFile::setText(const QString &text)
 }
 
 ////////////////////////////////////////////////////////////////
-Root* TextFile::getRoot()
+BaseGrid *TextFile::getRoot()
 {
     return _root;
 }
@@ -71,7 +72,7 @@ void TextFile::setScene(QGraphicsScene* scene)
     scene->addItem(_root);
 
     _container = new QGraphicsWidget;
-    _container->setLayout(_root);
+    _container->setLayout(_root->layout());
     scene->addItem(_container);
 }
 

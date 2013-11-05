@@ -11,6 +11,11 @@
 #include "Ui/Grids/HorizontalGrid.h"
 
 #include "Data/Interpreter.h"
+#include "Data/ElementManager.h"
+
+#include "./ElementAllocator.h"
+#include "./ElementUpdater.h"
+#include "./ElementDeleter.h"
 
 ////////////////////////////////////////////////////////////////
 #define BIND_C_FUNCTION(name) \
@@ -32,19 +37,6 @@ void createBindings(lua_State* L)
     BIND_C_FUNCTION(dump);
 }
 
-////////////////////////////////////////////////////////////////
-struct ElementAllocator
-{
-    int startIndex;
-    int endIndex;
-
-    // TODO: formatovanie elementov
-    std::string format;
-
-    BaseItem** item;
-    BaseGrid** grid;
-};
-
 QList<ElementAllocator> elementsToAdd;
 QList<ElementAllocator> elementsToRemove;
 QList<ElementAllocator> elementsToUpdate;
@@ -60,21 +52,14 @@ typedef boost::icl::interval_map<Interval, BaseGrid*> GridsTree;
 /// returns pointer to pointer of created object
 int QT_addItem(lua_State* L)
 {
-    BaseItem** parent = static_cast<BaseItem**>(lua_touserdata(L, 1));
+    ElementAllocator* allocator = new ElementAllocator(lua_isnil(L, 1) ? nullptr : lua_touserdata(L, 1));
+    allocator->index = lua_tointeger(L, 2);
+    allocator->text = lua_tostring(L, 3);
+    allocator->type = ElementType::Item; // TODO formatovanie
 
-    // TODO: Spravit elementFactory, aby nam vyrabala elementy...
-    //       Faktory vyraba elementy v novom threade, lebo interpreter v nom bezi
-    //       Faktory moze reusovat zmazane elementy
-    void* newElement = new (void*)();
-    Q_ASSERT(newElement != nullptr);
-    qDebug() << "Add item " << newElement;
+    ElementManager::getInstance()->addAllocator(allocator);
 
-    lua_pushlightuserdata(L, newElement);
-
-    // TODO: testovaci kod, objekty sa alokuju az po QT_commitChagnes
-    BaseItem** element = static_cast<BaseItem**>(newElement);
-    *element = new TextItem("TEST");
-
+    lua_pushlightuserdata(L, allocator->allocatedPointer);
     return 1;
 }
 
@@ -85,21 +70,13 @@ int QT_addItem(lua_State* L)
 /// returns pointer to pointer of created object
 int QT_addGrid(lua_State* L)
 {
-    BaseGrid** parent = static_cast<BaseGrid**>(lua_touserdata(L, 1));
+    ElementAllocator* allocator = new ElementAllocator(lua_isnil(L, 1) ? nullptr : lua_touserdata(L, 1));
+    allocator->index = lua_tointeger(L, 2);
+    allocator->type = ElementType::Grid; // TODO formatovanie
 
-    // TODO: Spravit elementFactory, aby nam vyrabala elementy...
-    //       Faktory vyraba elementy v novom threade, lebo interpreter v nom bezi
-    //       Faktory moze reusovat zmazane elementy
-    void* newElement = new (void*)();
-    Q_ASSERT(newElement != nullptr);
-    qDebug() << "Add grid " << newElement;
+    ElementManager::getInstance()->addAllocator(allocator);
 
-    lua_pushlightuserdata(L, newElement);
-
-    // TODO: testovaci kod, objekty sa alokuju az po QT_commitChagnes
-    BaseGrid** element = static_cast<BaseGrid**>(newElement);
-    *element = new HorizontalGrid();
-
+    lua_pushlightuserdata(L, allocator->allocatedPointer);
     return 1;
 }
 
@@ -109,9 +86,10 @@ int QT_addGrid(lua_State* L)
 /// (char*) new text of element on which is element going to be updated
 int QT_updateItem(lua_State* L)
 {
-    BaseItem** element = static_cast<BaseItem**>(lua_touserdata(L, 1));
+    ElementUpdater* updater = new ElementUpdater(lua_touserdata(L, 1));
+    updater->text = lua_tostring(L, 2);
 
-    qDebug() << "Update element " << static_cast<void*>(element);
+    ElementManager::getInstance()->addUpdater(updater);
 
     return 0;
 }
@@ -121,15 +99,9 @@ int QT_updateItem(lua_State* L)
 /// (QObject**) pointer to pointer of existing object
 int QT_removeElement(lua_State* L)
 {
-    BaseItem** element = static_cast<BaseItem**>(lua_touserdata(L, 1));
+    ElementDeleter* deleter = new ElementDeleter(lua_touserdata(L, 1));
 
-    qDebug() << "Remove element " << static_cast<void*>(element);
-
-    // Remove created object
-    delete static_cast<BaseItem*>(*element);
-
-    // Remove allocated pointer
-    delete element;
+    ElementManager::getInstance()->addDeleter(deleter);
 
     return 0;
 }
@@ -177,24 +149,23 @@ int dump(lua_State* L)
 
         int t = lua_type(L, i);
         switch (t) {
-            case LUA_TSTRING:  /* strings */
+            case LUA_TSTRING:  // strings
                 emit interpreter->emitOutput(QByteArray(lua_tostring(L, i)));
                 break;
 
-            case LUA_TBOOLEAN:  /* booleans */
+            case LUA_TBOOLEAN:  // booleans
                 emit interpreter->emitOutput(QByteArray(lua_toboolean(L, i) ? "true" : "false"));
                 break;
 
-            case LUA_TNUMBER:  /* numbers */
+            case LUA_TNUMBER:  // numbers
                 emit interpreter->emitOutput(QByteArray::number(lua_tonumber(L, i)));
                 break;
 
-            default:  /* other values */
+            default:  // other values
                 emit interpreter->emitOutput(QByteArray(lua_typename(L, t)));
                 break;
-
         }
     }
-//    emit interpreter->emitOutput(QByteArray("\n")); /* end the listing */
+//    emit interpreter->emitOutput(QByteArray("\n")); // end the listing
     return 0;
 }

@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-class Root;
+class BaseGrid;
 class QFile;
 class QGraphicsWidget;
 class QGraphicsScene;
@@ -21,7 +21,7 @@ public:
     bool isModified() const { return _modified; }
 
     QString getText() const { return _text; }
-    Root* getRoot();
+    BaseGrid* getRoot();
 
     void setScene(QGraphicsScene* scene);
     void resetScene(QGraphicsScene* scene);
@@ -34,7 +34,7 @@ public:
     // Use with caution :)
     QFile& getFile()
     {
-        Q_CHECK_PTR(_file);
+        Q_ASSERT(_file != nullptr);
         return *_file;
     }
 
@@ -57,7 +57,7 @@ private:
     mutable QString _pointer;
     QString _text;
     QFile* _file;
-    Root* _root;
+    BaseGrid* _root;
     QGraphicsWidget* _container;
 
     bool _modified;

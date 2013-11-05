@@ -27,7 +27,7 @@ FileManager::~FileManager()
 ////////////////////////////////////////////////////////////////
 FileManager* FileManager::getInstance()
 {
-    // TODO zavolat destruktor nakonci
+    // Destructor is called in main window destructor
     static FileManager* INSTANCE = new FileManager();
     return INSTANCE;
 }

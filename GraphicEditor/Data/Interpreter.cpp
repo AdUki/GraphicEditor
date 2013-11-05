@@ -12,6 +12,8 @@
 #include "Lua/LuaBindings.h"
 #include "Lua/LuaWorker.h"
 
+#include "./ElementManager.h"
+
 ////////////////////////////////////////////////////////////////
 Interpreter::Interpreter(QObject *parent)
 : QObject(parent)
@@ -76,6 +78,9 @@ void Interpreter::makeUnregisterFileCall(const void *file)
 ////////////////////////////////////////////////////////////////
 void Interpreter::makeReparseFileCall(const void *file, const QString& text)
 {
+    // Commit element changes on Main Thread after reparse file
+    connect(this, SIGNAL(workDone()), ElementManager::getInstance(), SLOT(commit()));
+
     LuaWorker* worker = new LuaWorker();
     worker->setFunction("reparseFile");
     worker->addArgument(file);

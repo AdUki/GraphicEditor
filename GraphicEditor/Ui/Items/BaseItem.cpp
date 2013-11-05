@@ -19,7 +19,12 @@ BaseItem::~BaseItem()
 ////////////////////////////////////////////////////////////////
 void BaseItem::setText(const QString &text)
 {
+    if (_text == text)
+        return;
+
     _text = text;
+
+    update();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -44,6 +49,8 @@ void BaseItem::setGeometry(const QRectF &rect)
 
     // Set position
     setPos(position.toPoint());
+
+    updateGeometry();
 }
 
 ////////////////////////////////////////////////////////////////

@@ -82,9 +82,6 @@ void LuaWorker::protectedCall()
         QByteArray message(lua_tostring(L, -1));
         lua_pop(L, 1);  /* pop error message from the stack */
 
-        if (!message.endsWith('\n'))
-            message.append('\n');
-
         emit failed(message);
     }
 
