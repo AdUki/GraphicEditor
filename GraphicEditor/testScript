@@ -13,7 +13,7 @@ echo 'QT_removeElement = function() end' >> luaInitScript.lua
 echo 'dofile("test.lua")' >> luaInitScript.lua
 
 # Load libraries and set up dump function and execute file with LuaJIT
-../LuaJIT-2.0.2/src/luajit.exe -e'dump = print; package.cpath =  "../luafilesystem/src/?.dll;../lpeg-0.12/?.dll;" .. package.cpath' luaInitScript.lua 
+../LuaJIT-2.0.2/src/luajit.exe -e'dump = io.write; package.cpath =  "../luafilesystem/src/?.dll;../lpeg-0.12/?.dll;" .. package.cpath' luaInitScript.lua 
 
 # Clean up
 rm luaInitScript.lua

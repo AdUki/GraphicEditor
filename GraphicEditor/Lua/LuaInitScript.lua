@@ -228,6 +228,12 @@ end
 -- Prints AST tree
 -- @param ast grouped tables that are ast tree
 function dumpAST(ast)
+
+    if ast == nil then
+        print "Given tree is nil (error during parse)!"
+        return
+    end
+
     function tprint (tbl, indent)
         for key, node in ipairs(tbl) do
             dump(string.rep(" ", indent) .. '[' .. key .. '] s=' .. tostring(node.startIndex) ..' e=' .. tostring(node.endIndex))
@@ -385,14 +391,13 @@ function reparseFile(name, text)
         if old and old.done == parseCycle then old = nil end
         if new and new.done == parseCycle then new = nil end
 
-        -- print("Comparing [" .. 
-        --     tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
-        --     .. "] with [" .. 
-        --     tostring(new and new.table.name) .. "," .. tostring(new and new.value) 
-        --     .. "]")
+        print("Comparing [" .. tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
+            .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
 
         -- Compare nodes
         if compareNodes(old, new) then
+
+            dump("!SAME!\n")
 
             -- Copy values from old
             new.instance = old.instance
@@ -403,7 +408,7 @@ function reparseFile(name, text)
 
         else
             -- Reverse direction of search
-            -- dump("!REVERSE!\n")
+            dump("!REVERSE!\n")
             coroutine.yield()
 
             -- Check if back search didnt marked our node
@@ -442,42 +447,48 @@ function reparseFile(name, text)
     end
 
     ---------------------------------------------------------
-    parseCycle = parseCycle + 1
+    local function startCoroutine(func, ...)
+        local createdCoroutine = coroutine.create(func)
+        coroutine.resume(createdCoroutine, ...)
+        return createdCoroutine
+    end
 
+    ---------------------------------------------------------
     local file = assert(Files[name], 'No opened file: ' .. tostring(name))
     local oldTree = file.tree
     local newTree = file.grammar:match(text)
 
+    if newTree == nil then
+        print 'Reparsing done with error!\n'
+        return
+    end
+
+    parseCycle = parseCycle + 1
     finishCompare = false
     
-    local compareFrontCoroutine = coroutine.create(compareTrees)
-    local compareBackCoroutine = coroutine.create(compareTrees)
-
     local rootOld = { table = { name='root' }, value = oldTree }
     local rootNew = { table = { name='root' }, value = newTree }
 
+    -- Create coroutine for front search
     treeIterator = frontIterator
-    -- dump 'START: front search!\n'
-    coroutine.resume(compareFrontCoroutine, rootOld, rootNew, 1, 1)
+    local compareFrontCoroutine = startCoroutine(compareTrees, rootOld, rootNew, 1, 1)
 
+    -- Create coroutine for back search
     treeIterator = backIterator
-    -- dump 'START: back search!\n'
-    coroutine.resume(compareBackCoroutine, rootOld, rootNew, 1, 1)
+    local compareBackCoroutine = startCoroutine(compareTrees, compareBackCoroutine, rootOld, rootNew, 1, 1)
 
-    -- Process tree until finished
+    -- Search tree until finished
     local frontCourotineFinished = false
     local backCourotineFinished = false
     while true do
 
         treeIterator = frontIterator
-        -- dump 'START: front search!\n'
         if coroutine.resume(compareFrontCoroutine) == false then
             frontCourotineFinished = true
             if backCourotineFinished then break end
         end
 
         treeIterator = backIterator
-        -- dump 'START: back search!\n'
         if coroutine.resume(compareBackCoroutine) == false then
             backCourotineFinished = true
             if frontCourotineFinished then break end
@@ -521,7 +532,7 @@ end
 function removeElement(element, index)
     if element.value == "" then return end
 
-    print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"\n')
+    print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"')
 
     if element.instance then
         -- dump('RETURNED: ' .. tostring(element.instance) .. '\n');

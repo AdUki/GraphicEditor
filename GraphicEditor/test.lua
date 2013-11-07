@@ -4,10 +4,16 @@ print '---------------------------------------------------------'
 local file = 'testfile.art'
 local tree
 
-tree = registerFile(file, [[aa+cc]], 'arithmetic').tree
+tree = registerFile(file, [[aa]], 'arithmetic').tree
 dumpAST(tree)
 
-tree = reparseFile(file, [[aa+(1)-2*(3)/cc]])
+-- tree = reparseFile(file, [[aa+(1)-2*(3)/cc]])
+-- dumpAST(tree)
+
+-- tree = reparseFile(file, [[aa]])
+-- dumpAST(tree)
+
+tree = reparseFile(file, [[]])
 dumpAST(tree)
 
 -- tree = registerFile(file, '5+5', 'arithmetic').tree

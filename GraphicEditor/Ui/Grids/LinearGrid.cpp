@@ -6,8 +6,8 @@
 
 ////////////////////////////////////////////////////////////////
 LinearGrid::LinearGrid(Qt::Orientation orientation, QGraphicsLayoutItem *parent)
-: QGraphicsLinearLayout(orientation, parent)
-, BaseGrid()
+: BaseGrid()
+, QGraphicsLinearLayout(orientation, parent)
 {
 }
 
