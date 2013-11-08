@@ -35,7 +35,7 @@ public:
 
     /// Pointer of parent, which can be only grid
     /// @attention Is null if parent is root
-    void* parent;
+    BaseGrid** parent;
 
     /// @return true if parent is root, false otherwise
     bool isParentRoot() const { return parent == nullptr; }
@@ -45,6 +45,20 @@ public:
         T** pointerToPointer = static_cast<T**>(allocatedPointer);
         *pointerToPointer = object;
         return *pointerToPointer;
+    }
+
+    quint64 qHash(uint seed) const
+    {
+        Q_UNUSED(seed);
+        return parent == nullptr ? 0 : reinterpret_cast<quint64>(*parent);
+    }
+
+    bool operator==(const ElementAllocator& elem) const {
+        return elem.qHash(0) == elem.qHash(0);
+    }
+
+    bool operator<(const ElementAllocator& elem) const {
+        return index < elem.index;
     }
 
     BaseGrid* getParent();

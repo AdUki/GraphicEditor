@@ -2,12 +2,15 @@
 #define ELEMENTMANAGER_H
 
 #include <QObject>
+#include <QHash>
+#include <set>
+
+#include "Lua/ElementAllocator.h"
 
 class QGraphicsScene;
 
 class BaseGrid;
 
-class ElementAllocator;
 class ElementDeleter;
 class ElementUpdater;
 
@@ -33,7 +36,11 @@ public slots:
     void reset();
 
 private:
-    QList<ElementAllocator*> _allocators;
+    typedef std::set<ElementAllocator*> SortedAllocators;
+
+    QHash<quint64, SortedAllocators> _allocatorsBuckets;
+    QList<quint64> _allocators;
+
     QList<ElementUpdater*> _updaters;
     QList<ElementDeleter*> _deleters;
 

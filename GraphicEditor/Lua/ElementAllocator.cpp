@@ -12,7 +12,7 @@ ElementAllocator::ElementAllocator(void* parent)
 {
     // Parent can be null if it is root
     if (parent != nullptr)
-        this->parent = parent;
+        this->parent = static_cast<BaseGrid**>(parent);
 }
 
 ////////////////////////////////////////////////////////////////
@@ -20,8 +20,7 @@ BaseGrid* ElementAllocator::getParent()
 {
     Q_ASSERT(parent != nullptr);
 
-    BaseGrid** pointerToPointer = static_cast<BaseGrid**>(parent);
-    BaseGrid* parentPointer = *pointerToPointer;
+    BaseGrid* parentPointer = *parent;
 
     Q_ASSERT(parentPointer != nullptr);
 

@@ -391,13 +391,11 @@ function reparseFile(name, text)
         if old and old.done == parseCycle then old = nil end
         if new and new.done == parseCycle then new = nil end
 
-        print("Comparing [" .. tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
-            .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
+        -- print("Comparing [" .. tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
+            -- .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
 
         -- Compare nodes
         if compareNodes(old, new) then
-
-            dump("!SAME!\n")
 
             -- Copy values from old
             new.instance = old.instance
@@ -408,7 +406,7 @@ function reparseFile(name, text)
 
         else
             -- Reverse direction of search
-            dump("!REVERSE!\n")
+            -- dump("!REVERSE!\n")
             coroutine.yield()
 
             -- Check if back search didnt marked our node

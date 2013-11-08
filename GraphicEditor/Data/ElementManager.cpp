@@ -31,7 +31,21 @@ ElementManager* ElementManager::getInstance()
 ////////////////////////////////////////////////////////////////
 void ElementManager::addAllocator(ElementAllocator *allocator)
 {
-    _allocators.push_back(allocator);
+    quint64 key = reinterpret_cast<quint64>(allocator->allocatedPointer);
+
+    if (_allocatorsBuckets.contains(key)) {
+        auto iterator = _allocatorsBuckets.find(key);
+        Q_ASSERT(iterator != _allocatorsBuckets.end());
+
+        iterator->insert(allocator);
+    }
+    else {
+        SortedAllocators newSet;
+        newSet.insert(allocator);
+
+        _allocatorsBuckets[key] = newSet;
+        _allocators.push_back(key);
+    }
 }
 
 ////////////////////////////////////////////////////////////////
@@ -85,39 +99,44 @@ void ElementManager::commit()
 
     ////////////////////////////////////////////////////////////////
     // At last we add new items
-    for (ElementAllocator* allocator : _allocators) {
+    for (quint64 key : _allocators) {
+        SortedAllocators allocators = _allocatorsBuckets.value(key);
 
-        qDebug() << "Allocate element " << allocator->allocatedPointer << " to parent " << allocator->parent;
+        for (ElementAllocator* allocator : allocators) {
 
-        switch(allocator->type) {
-        case ElementType::Item: {
-            BaseItem* item = allocator->allocatePointer(new TextItem(allocator->text));
+            qDebug() << "Allocate element " << allocator->allocatedPointer << " to parent " << allocator->parent;
 
-            if (allocator->isParentRoot())
-                _root->insertElement(item, allocator->index);
-            else {
-                BaseGrid* parent = allocator->getParent();
-                QGraphicsLayout* layout = parent->layout();
-                qDebug() << "Adding to layout with " << layout->count() << " items";
-                parent->insertElement(item, allocator->index);
+            switch(allocator->type) {
+            case ElementType::Item: {
+                BaseItem* item = allocator->allocatePointer(new TextItem(allocator->text));
+
+                if (allocator->isParentRoot())
+                    _root->insertElement(item, allocator->index);
+                else {
+                    BaseGrid* parent = allocator->getParent();
+                    QGraphicsLayout* layout = parent->layout();
+                    qDebug() << "Adding to layout with " << layout->count() << " items at " << allocator->index;
+                    parent->insertElement(item, allocator->index);
+                }
+                _scene->addItem(item);
+
+                break;
             }
-            _scene->addItem(item);
+            case ElementType::Grid: {
+                BaseGrid *grid = allocator->allocatePointer(new HorizontalGrid());
+                _scene->addItem(grid);
 
-            break;
-        }
-        case ElementType::Grid: {
-            BaseGrid *grid = allocator->allocatePointer(new HorizontalGrid());
-            _scene->addItem(grid);
+                if (allocator->isParentRoot())
+                    _root->insertElement(grid, allocator->index);
+                else
+                    allocator->getParent()->insertElement(grid, allocator->index);
+                break;
+            }
+            }
 
-            if (allocator->isParentRoot())
-                _root->insertElement(grid, allocator->index);
-            else
-                allocator->getParent()->insertElement(grid, allocator->index);
-            break;
-        }
+            delete allocator;
         }
 
-        delete allocator;
     }
 
     reset();
