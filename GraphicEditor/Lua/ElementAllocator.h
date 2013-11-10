@@ -54,7 +54,7 @@ public:
     }
 
     bool operator==(const ElementAllocator& elem) const {
-        return elem.qHash(0) == elem.qHash(0);
+        return index == elem.index;
     }
 
     bool operator<(const ElementAllocator& elem) const {

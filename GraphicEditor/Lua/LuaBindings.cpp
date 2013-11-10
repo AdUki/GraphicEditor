@@ -70,7 +70,11 @@ int QT_addItem(lua_State* L)
 /// returns pointer to pointer of created object
 int QT_addGrid(lua_State* L)
 {
-    ElementAllocator* allocator = new ElementAllocator(lua_isnil(L, 1) ? nullptr : lua_touserdata(L, 1));
+    void* itemPtr = nullptr;
+    if (!lua_isnil(L, 1))
+        itemPtr = lua_touserdata(L, 1);
+
+    ElementAllocator* allocator = new ElementAllocator(itemPtr);
     allocator->index = lua_tointeger(L, 2);
     allocator->type = ElementType::Grid; // TODO formatovanie
 
@@ -86,7 +90,11 @@ int QT_addGrid(lua_State* L)
 /// (char*) new text of element on which is element going to be updated
 int QT_updateItem(lua_State* L)
 {
-    ElementUpdater* updater = new ElementUpdater(lua_touserdata(L, 1));
+    void* itemPtr = nullptr;
+    if (!lua_isnil(L, 1))
+        itemPtr = lua_touserdata(L, 1);
+
+    ElementUpdater* updater = new ElementUpdater(itemPtr);
     updater->text = lua_tostring(L, 2);
 
     ElementManager::getInstance()->addUpdater(updater);

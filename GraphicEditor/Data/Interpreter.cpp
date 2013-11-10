@@ -78,6 +78,8 @@ void Interpreter::makeUnregisterFileCall(const void *file)
 ////////////////////////////////////////////////////////////////
 void Interpreter::makeReparseFileCall(const void *file, const QString& text)
 {
+    qDebug() << "Reparsing new text: " << text;
+
     // Commit element changes on Main Thread after reparse file
     connect(this, SIGNAL(workDone()), ElementManager::getInstance(), SLOT(commit()));
 

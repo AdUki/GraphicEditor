@@ -1,5 +1,4 @@
-#ifndef ELEMENTMANAGER_H
-#define ELEMENTMANAGER_H
+#pragma once
 
 #include <QObject>
 #include <QHash>
@@ -7,6 +6,7 @@
 
 #include "Lua/ElementAllocator.h"
 
+class QMutex;
 class QGraphicsScene;
 
 class BaseGrid;
@@ -17,6 +17,7 @@ class ElementUpdater;
 class ElementManager : public QObject
 {
     Q_OBJECT
+
 public:
     explicit ElementManager(QObject *parent = 0);
 
@@ -36,16 +37,25 @@ public slots:
     void reset();
 
 private:
-    typedef std::set<ElementAllocator*> SortedAllocators;
+    QMutex* _commitMutex;
 
-    QHash<quint64, SortedAllocators> _allocatorsBuckets;
-    QList<quint64> _allocators;
+    struct AllocatorCompare {
+        bool operator() (ElementAllocator* lhs, ElementAllocator* rhs) const{
+            return lhs->index < rhs->index;
+        }
+    };
 
-    QList<ElementUpdater*> _updaters;
-    QList<ElementDeleter*> _deleters;
+    typedef std::set<ElementAllocator*, AllocatorCompare> SortedAllocators;
+    typedef QHash<quint64, SortedAllocators> AllocatorsBuckets;
+    typedef QList<quint64> AllocatorsIndexes;
+    typedef QList<ElementUpdater*> Updaters;
+    typedef QList<ElementDeleter*> Deleters;
+
+    AllocatorsBuckets _allocatorsBuckets;
+    AllocatorsIndexes _allocators;
+    Updaters _updaters;
+    Deleters _deleters;
 
     QGraphicsScene* _scene;
     BaseGrid* _root;
 };
-
-#endif // ELEMENTMANAGER_H

@@ -1,8 +1,7 @@
 #pragma once //"
 const char* luaInitScript = R"( -- DO NOT DELETE! LONG STRING BEGIN
 
--- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
-io.stdout:setvbuf 'no'
+io.stdout:setvbuf 'no' -- NOTE: Line for printing to console with Lua5.1 interpreter on Windows
 dump '\nInitialization script started\n'
 dump '---------------------------------------------------------\n'
 
@@ -329,7 +328,7 @@ local parseCycle = 0
 -- @param
 function reparseFile(name, text)
 
-    print "\nReparsing file...\n==============================================="
+    print "\nReparsing file...\n===============================================\n"
 
     ---------------------------------------------------------
     local function compareNodes(node1, node2)
@@ -392,7 +391,9 @@ function reparseFile(name, text)
         if new and new.done == parseCycle then new = nil end
 
         -- print("Comparing [" .. tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
-            -- .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
+        --     .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
+
+        local nodeToRemove = nil
 
         -- Compare nodes
         if compareNodes(old, new) then
@@ -412,12 +413,13 @@ function reparseFile(name, text)
             -- Check if back search didnt marked our node
             if  checkForEnd(old, new) then return end
 
-            -- Remove old nodes
+            -- Set to remove old nodes
             if old ~= nil and old.done ~= parseCycle then
-                removeElement(old, oldIndex);
+                nodeToRemove = old
             end
-            -- Add new nodes
-            if new ~= nil and new.done ~= parseCycle then
+
+            -- Add new nodes before processing children
+            if new ~= nil then
                 addElement(new, parent, newIndex)
             end
 
@@ -436,6 +438,11 @@ function reparseFile(name, text)
                 if checkForEnd(old, new) then return end
             end
 
+        end
+
+        -- We delete old nodes after processing children
+        if nodeToRemove ~= nil and nodeToRemove.done ~= parseCycle  then
+            removeElement(nodeToRemove, oldIndex)
         end
 
         -- Mark done flags
@@ -473,7 +480,7 @@ function reparseFile(name, text)
 
     -- Create coroutine for back search
     treeIterator = backIterator
-    local compareBackCoroutine = startCoroutine(compareTrees, compareBackCoroutine, rootOld, rootNew, 1, 1)
+    local compareBackCoroutine = startCoroutine(compareTrees, rootOld, rootNew, 1, 1)
 
     -- Search tree until finished
     local frontCourotineFinished = false
@@ -510,17 +517,22 @@ end
 -- @param index from parent from new tree
 function addElement(element, parent, index)
     
-    index = index - 1
+    if element.done ~= parseCycle then
 
-    -- TODO formatovanie objektu
-    if element.type == 'node' then
-        element.instance = QT_addGrid(parent.instance, index )
-    elseif element.type == 'leaf' then
-        element.instance = QT_addItem(parent.instance, index , element.value)
+        index = index - 1
+
+        -- TODO formatovanie objektu
+        if element.type == 'node' then
+            element.instance = QT_addGrid(parent.instance, index )
+        elseif element.type == 'leaf' then
+            element.instance = QT_addItem(parent.instance, index , element.value)
+        end
+
+        print('ADD: {' .. tostring(element.instance) .. ' ' .. element.table.name .. ' "' .. tostring(element.value) 
+            .. '"} to parent {' .. tostring(parent.instance) .. ' ' .. tostring(parent and parent.table.name) .. '} at index ' .. tostring(index + 1))
+
+        element.done = parseCycle
     end
-
-    print('ADD: {' .. tostring(element.instance) .. ' ' .. element.table.name .. ' "' .. tostring(element.value) 
-        .. '"} to parent {' .. tostring(parent.instance) .. ' ' .. tostring(parent and parent.table.name) .. '} at index ' .. tostring(index + 1))
 end
 
 ---------------------------------------------------------
@@ -528,20 +540,22 @@ end
 -- @param item from old tree
 -- @param index from parent from old tree
 function removeElement(element, index)
-    if element.value == "" then return end
 
-    print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"')
-
-    if element.instance then
-        -- dump('RETURNED: ' .. tostring(element.instance) .. '\n');
+    if element.done ~= parseCycle then
+        print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"')
         QT_removeElement(element.instance)
+        element.done = parseCycle
     end
 end
 
 ---------------------------------------------------------
 function updateElement(oldElement, newElement, oldIndex, newIndex)
-    print('UPDATE: ' .. tostring(newElement.instance) .. ' '  .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"')
-    QT_updateItem(newElement.instance, newElement.value)
+
+    if newElement.done ~= parseCycle then
+        print('UPDATE: ' .. tostring(newElement.instance) .. ' '  .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"')
+        QT_updateItem(newElement.instance, newElement.value)
+        newElement.done = parseCycle
+    end
 end
 
 ------------------------------------------------------------------------------------------------------------------ DEFAULT GRAMMAR

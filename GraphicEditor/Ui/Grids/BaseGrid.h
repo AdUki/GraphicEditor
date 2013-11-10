@@ -16,7 +16,7 @@ public:
     BaseGrid();
     ~BaseGrid() override;
 
-//    QRectF boundingRect() const override;
+    QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
     virtual void insertElement(BaseItem* item, int index) = 0;
@@ -27,6 +27,7 @@ public:
 
     /// @return layout interface with layout functions
     QGraphicsLayout* layout();
+    const QGraphicsLayout* constLayout() const;
 
 protected:
 

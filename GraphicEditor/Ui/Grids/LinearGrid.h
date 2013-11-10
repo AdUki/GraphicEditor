@@ -11,7 +11,7 @@ class LinearGrid :
 public:
     LinearGrid(Qt::Orientation orientation, QGraphicsLayoutItem *parent = 0);
 
-    QRectF boundingRect() const override;
+    void setGeometry(const QRectF &rect) override;
 
     void insertElement(BaseItem* item, int index) override;
     void insertElement(BaseGrid* grid, int index) override;

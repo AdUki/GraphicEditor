@@ -12,10 +12,11 @@ LinearGrid::LinearGrid(Qt::Orientation orientation, QGraphicsLayoutItem *parent)
 }
 
 ////////////////////////////////////////////////////////////////
-QRectF LinearGrid::boundingRect() const
+void LinearGrid::setGeometry(const QRectF &rect)
 {
-//    QRectF bounds(this->pos(), sizeHint(Qt::PreferredSize));
-    return geometry();
+    QRectF newRect(rect);
+    newRect.adjust(-5, -5, 5, 5); // FIXME: nefunguje pridanie borderu
+    QGraphicsLinearLayout::setGeometry(rect);
 }
 
 ////////////////////////////////////////////////////////////////

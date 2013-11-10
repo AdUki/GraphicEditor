@@ -85,9 +85,9 @@ void LuaWorker::protectedCall()
         emit failed(message);
     }
 
-    Interpreter::getInstance()->getWorkerMutex()->unlock();
-
     emit finished();
+
+    Interpreter::getInstance()->getWorkerMutex()->unlock();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -102,9 +102,9 @@ void LuaWorker::call()
     prepareLuaState(L);
     lua_call(L, _arguments.size(), 0);
 
-    Interpreter::getInstance()->getWorkerMutex()->unlock();
-
     emit finished();
+
+    Interpreter::getInstance()->getWorkerMutex()->unlock();
 }
 
 ////////////////////////////////////////////////////////////////

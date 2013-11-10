@@ -16,10 +16,25 @@ BaseGrid::~BaseGrid()
 }
 
 ////////////////////////////////////////////////////////////////
-QGraphicsLayout* BaseGrid::layout() {
+QGraphicsLayout* BaseGrid::layout()
+{
     QGraphicsLayout* layout = dynamic_cast<QGraphicsLayout*>(dynamic_cast<BaseGrid*>(this));
     Q_ASSERT(layout != nullptr);
     return layout;
+}
+
+////////////////////////////////////////////////////////////////
+const QGraphicsLayout* BaseGrid::constLayout() const
+{
+    const QGraphicsLayout* layout = dynamic_cast<const QGraphicsLayout*>(dynamic_cast<const BaseGrid*>(this));
+    Q_ASSERT(layout != nullptr);
+    return layout;
+}
+
+////////////////////////////////////////////////////////////////
+QRectF BaseGrid::boundingRect() const
+{
+    return constLayout()->geometry();
 }
 
 ////////////////////////////////////////////////////////////////

@@ -1,6 +1,7 @@
 #include "ElementManager.h"
 
 #include <QGraphicsScene>
+#include <QMutex>
 #include <QDebug>
 
 #include "Ui/Items/BaseItem.h"
@@ -15,8 +16,9 @@
 #include "./Interpreter.h"
 
 ////////////////////////////////////////////////////////////////
-ElementManager::ElementManager(QObject *parent) :
-    QObject(parent)
+ElementManager::ElementManager(QObject *parent)
+: QObject(parent)
+, _commitMutex(new QMutex())
 {
 }
 
@@ -31,12 +33,12 @@ ElementManager* ElementManager::getInstance()
 ////////////////////////////////////////////////////////////////
 void ElementManager::addAllocator(ElementAllocator *allocator)
 {
-    quint64 key = reinterpret_cast<quint64>(allocator->allocatedPointer);
+    quint64 key = reinterpret_cast<quint64>(allocator->parent);
 
     if (_allocatorsBuckets.contains(key)) {
         auto iterator = _allocatorsBuckets.find(key);
         Q_ASSERT(iterator != _allocatorsBuckets.end());
-
+        Q_ASSERT(iterator->find(allocator) == iterator->end());
         iterator->insert(allocator);
     }
     else {
@@ -64,30 +66,45 @@ void ElementManager::addUpdater(ElementUpdater *updater)
 void ElementManager::commit()
 {
     Q_ASSERT(_root != nullptr);
+    Q_ASSERT(_scene != nullptr);
+
+    // We swap all data structures with new one because another thread can is updating those structures while commiting changes
+    AllocatorsBuckets allocatorsBuckets;
+    AllocatorsIndexes allocatorsIndexes;
+    Updaters updaters;
+    Deleters deleters;
+
+    std::swap(_allocatorsBuckets, allocatorsBuckets);
+    std::swap(_allocators, allocatorsIndexes);
+    std::swap(_updaters, updaters);
+    std::swap(_deleters, deleters);
 
     qDebug() << "Commiting chagnes...\n";
 
     ////////////////////////////////////////////////////////////////
     // First we delete old items
-    for (ElementDeleter* deleter : _deleters) {
+    for (ElementDeleter* deleter : deleters) {
 
         qDebug() << "Remove element " << deleter->pointer;
 
         // TODO: reuse objects
 
         // Remove created object
-        _scene->removeItem(deleter->element);
-        delete deleter->element;
+        if (deleter->element != nullptr) {
+            _scene->removeItem(deleter->element);
+            delete deleter->element;
+        }
 
         // Remove allocated pointer
-        delete deleter->pointer;
+        if (deleter->pointer != nullptr)
+            delete deleter->pointer;
 
         delete deleter;
     }
 
     ////////////////////////////////////////////////////////////////
     // Then we update existing
-    for (ElementUpdater* updater : _updaters) {
+    for (ElementUpdater* updater : updaters) {
 
         qDebug() << "Update element " << updater->item;
 
@@ -99,29 +116,27 @@ void ElementManager::commit()
 
     ////////////////////////////////////////////////////////////////
     // At last we add new items
-    for (quint64 key : _allocators) {
-        SortedAllocators allocators = _allocatorsBuckets.value(key);
+    for (quint64 key : allocatorsIndexes) {
+        SortedAllocators allocators = allocatorsBuckets.value(key);
 
         for (ElementAllocator* allocator : allocators) {
 
-            qDebug() << "Allocate element " << allocator->allocatedPointer << " to parent " << allocator->parent;
+            qDebug() << "Allocate element " << allocator->allocatedPointer << " to parent " << allocator->parent << " at index" << allocator->index;
 
             switch(allocator->type) {
+
             case ElementType::Item: {
                 BaseItem* item = allocator->allocatePointer(new TextItem(allocator->text));
 
                 if (allocator->isParentRoot())
                     _root->insertElement(item, allocator->index);
-                else {
-                    BaseGrid* parent = allocator->getParent();
-                    QGraphicsLayout* layout = parent->layout();
-                    qDebug() << "Adding to layout with " << layout->count() << " items at " << allocator->index;
-                    parent->insertElement(item, allocator->index);
-                }
-                _scene->addItem(item);
+                else
+                    allocator->getParent()->insertElement(item, allocator->index);
 
+                _scene->addItem(item);
                 break;
             }
+
             case ElementType::Grid: {
                 BaseGrid *grid = allocator->allocatePointer(new HorizontalGrid());
                 _scene->addItem(grid);
@@ -132,6 +147,9 @@ void ElementManager::commit()
                     allocator->getParent()->insertElement(grid, allocator->index);
                 break;
             }
+
+            default:
+                Q_ASSERT_X(false, "switch", "Unknown element type!");
             }
 
             delete allocator;
@@ -147,9 +165,4 @@ void ElementManager::reset()
 {
     // We disconnect from Interpreter
     disconnect(Interpreter::getInstance(), SIGNAL(workDone()), this, SLOT(commit()));
-
-    // Clear all changes
-    _deleters.clear();
-    _allocators.clear();
-    _updaters.clear();
 }
