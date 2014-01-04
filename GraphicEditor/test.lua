@@ -4,11 +4,80 @@ print '---------------------------------------------------------'
 local file = 'testfile.art'
 local tree
 
-tree = registerFile(file, [[(1+(2+(3+4)+5+6)+7+(8+9)]], 'arithmetic').tree
-dumpAST(tree)
+---------------------------------------------------------
+-- Prints AST tree
+-- @param ast grouped tables that are ast tree
+function countAST(ast)
 
-tree = reparseFile(file, [[(1+(2+(3+4)+5+6)+7+(8+9))]])
-dumpAST(tree)
+    if ast == nil then
+        print "Given tree is nil (error during parse)!"
+        return
+    end
+
+    local count = 0
+
+    function tcount (tbl)
+        for key, node in ipairs(tbl) do
+            count = count + 1
+
+            if type(node.value) == 'table' then
+                tcount(node.value)
+            end
+
+        end
+    end
+    tcount(ast)
+
+    return count
+end
+
+
+function newText(text)
+
+	local oldNodesCount = countAST(tree)
+	oldNodesCount = oldNodesCount or 0
+
+	if initialized == nil then
+		tree = registerFile(file, text, 'arithmetic').tree
+		initialized = true
+	else
+		tree = reparseFile(file, text)
+	end
+
+	local newNodesCount = countAST(tree)
+
+	print ('Nodes in tree: ', newNodesCount)
+	dumpAST(tree)
+
+	print ('Comparison (must be zero!): ' .. tostring(oldNodesCount + totalAdds - totalRemoves - newNodesCount))
+	-- if oldNodesCount + totalAdds - totalRemoves - newNodesCount ~= 0 then
+	-- 	print '###### !!! NOT ZERO !!! ######'
+	-- 	assert(false)
+	-- end
+	
+	totalAdds = 0
+	totalRemoves = 0
+end
+
+newText 'aaa+(bbb)+123'
+newText '(aaa+bbb)+9999'
+
+-- newText '1'
+-- newText '(1'
+-- newText '(1)'
+-- newText '1)'
+
+-- newText '1'
+-- newText '1+2+3+4+5+6'
+-- newText '(1+2)+3+4+(5+6)'
+-- newText '(1+2)+3+4+(5)+6)'
+-- newText '(1+(2)+3+4+(5)+6)'
+-- newText '(1+(2)+3+4+(5+6)'
+-- newText '(1+2)+3+4+(5+6)'
+
+-- newText '(1+2)+3+4+(5+x+6)'
+
+-- newText '(1+2)+3+4+(5+(200/5)*800+x+y+6)'
 
 -- tree = registerFile(file, '5+5', 'arithmetic').tree
 -- dumpAST(tree)

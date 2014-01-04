@@ -8,6 +8,7 @@
 BaseItem::BaseItem(QGraphicsLayoutItem *parent)
 : QGraphicsLayoutItem(parent)
 {
+    qDebug() << "BaseItem()";
 }
 
 ////////////////////////////////////////////////////////////////

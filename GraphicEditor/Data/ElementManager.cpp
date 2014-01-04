@@ -121,7 +121,8 @@ void ElementManager::commit()
 
         for (ElementAllocator* allocator : allocators) {
 
-            qDebug() << "Allocate element " << allocator->allocatedPointer << " to parent " << allocator->parent << " at index" << allocator->index;
+            qDebug() << "Allocate element [" << (allocator->type == ElementType::Item ? allocator->text : "grid") << ":" << allocator->allocatedPointer
+                     << "] to parent " << allocator->parent << " at index" << allocator->index;
 
             switch(allocator->type) {
 

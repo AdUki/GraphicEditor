@@ -225,6 +225,7 @@ end
 
 ---------------------------------------------------------
 -- Prints AST tree
+-- 
 -- @param ast grouped tables that are ast tree
 function dumpAST(ast)
 
@@ -251,6 +252,7 @@ end
 
 ---------------------------------------------------------
 -- Prints AST tree
+-- 
 -- @param ast grouped tables that are ast tree
 function crawlAST(ast)
     
@@ -332,180 +334,156 @@ function reparseFile(name, text)
 
     ---------------------------------------------------------
     local function compareNodes(node1, node2)
-        if node1 == nil or node2 == nil then 
-            return false 
+
+        -- NOTE: print only for debug
+        -- print("Comparing [" .. tostring(node1 and node1.table and node1.table.name) .. "," .. tostring(node1 and node1.value) 
+        --     .. "] with [" .. tostring(node2 and node2.table and node2.table.name) .. "," .. tostring(node2 and node2.value) .. "]")
+        
+        if node1 == nil or node2 == nil then
+            return false
         end
 
         return node1.table.name == node2.table.name
     end
 
     ---------------------------------------------------------
-    local function findMaximum(tbl1, tbl2)
-        if tbl1 == nil or type(tbl1.value) ~= 'table' then return #tbl2.value end
-        if tbl2 == nil or type(tbl2.value) ~= 'table' then return #tbl1.value end
-        return #tbl1.value > #tbl2.value and #tbl1.value or #tbl2.value
-    end
+    -- Compares two tables from ASTrees
+    -- 
+    -- @param table of old tree
+    -- @param table of new tree
+    -- @param parent to which we will put new nodes
+    function compareTables(oldTable, newTable, parent)
 
-    ---------------------------------------------------------
-    local function checkForEnd(tbl1, tbl2)
-        -- Check if it is done node
-        if  tbl1 == nil and tbl2 == nil or
-            tbl1 and tbl1.done == parseCycle and 
-            tbl2 and tbl2.done == parseCycle
-        then
-            --dump 'END OF TREE!\n'
-            return true
+        assert(oldTable ~= nil or newTable ~= nil, "Trying to compare nil with nil!")
+
+        -- We will set empty table instead of nil because when we index empty table we will get nil
+        oldTable = oldTable or {}
+        newTable = newTable or {}
+
+        local frontIndex = 1
+
+        -- Start to compare from front until first error
+        while compareNodes(oldTable[frontIndex], newTable[frontIndex]) do  
+            compareTrees(oldTable[frontIndex], newTable[frontIndex], frontIndex, parent)
+            frontIndex = frontIndex + 1
         end
-        return false
+        frontIndex = frontIndex - 1
+
+        -- Set back indexes
+        local sizeOfOld = #oldTable
+        local sizeOfNew = #newTable
+        local backOldIndex = 0
+        local backNewIndex = 0
+
+        -- Start compare from back until all nodes are compared
+        while sizeOfOld ~= 0 or sizeOfNew ~= 0 do
+
+            if sizeOfOld - backOldIndex < frontIndex then
+                oldTable = {}
+                sizeOfOld = 0
+            end
+
+            if sizeOfNew - backNewIndex < frontIndex then
+                newTable = {}
+                sizeOfNew = 0
+            end
+
+            compareTrees(
+                oldTable[sizeOfOld - backOldIndex + 1], 
+                newTable[sizeOfNew - backNewIndex + 1], 
+                sizeOfNew - backNewIndex + 1, parent)
+
+            backNewIndex = backNewIndex + 1
+            backOldIndex = backOldIndex + 1
+        end
     end
 
     ---------------------------------------------------------
-    local function frontIterator(old, new, index)
-        -- print ('front iterator '.. tostring(old) .. ' ' .. tostring(new) .. ' ' .. tostring(index))
-        compareTrees(
-            old and old.value[index], 
-            new and new.value[index], 
-            index,
-            index,
-            new)
-    end
+    -- Functions compare trees represented by their root nodes
+    -- 
+    -- @param root node of old tree
+    -- @param root node of new tree
+    -- @param index of parent node where we will put new nodes
+    function compareTrees(old, new, index, parent)
 
-    ---------------------------------------------------------
-    local function backIterator(old, new, index)
-        -- print ('back iterator ' .. tostring(old) .. ' ' .. tostring(new) .. ' ' .. tostring(index))
-        compareTrees(
-            old and old.value[#old.value - index + 1], 
-            new and new.value[#new.value - index + 1], 
-            old and #old.value - index + 1,
-            new and #new.value - index + 1,
-            new)
-    end
-
-    ---------------------------------------------------------
-    function compareTrees(old, new, oldIndex, newIndex, parent)
-        -- print ('Compare oldIndex=' .. tostring(newIndex) .. ' newIndex' .. tostring(newIndex))
-
-        -- Check if it is done node
-        if  checkForEnd(old, new) then return end
-        if old and old.done == parseCycle then old = nil end
-        if new and new.done == parseCycle then new = nil end
-
-        -- print("Comparing [" .. tostring(old and old.table.name) .. "," .. tostring(old and old.value) 
-        --     .. "] with [" .. tostring(new and new.table.name) .. "," .. tostring(new and new.value) .. "]")
-
-        local nodeToRemove = nil
+        if old == nil and new == nil then
+            -- print ("Rejecting", old, new)
+            return
+        end
+        -- print "Accepting"
 
         -- Compare nodes
-        if compareNodes(old, new) then
+        local nodesAreSame = compareNodes(old, new)
+        if nodesAreSame then
 
             -- Copy values from old
             new.instance = old.instance
 
-            if type(old.value) == 'string' and type(new.value) == 'string' and old.value ~= new.value then
-                updateElement(old, new, oldIndex, newIndex)
+            -- Compare values and update nodes if necessary
+            if  type(old.value) == 'string' and 
+                type(new.value) == 'string' and 
+                old.value ~= new.value then
+
+                updateElement(new, old)
             end
 
-        else
-            -- Reverse direction of search
-            -- dump("!REVERSE!\n")
-            coroutine.yield()
-
-            -- Check if back search didnt marked our node
-            if  checkForEnd(old, new) then return end
-
-            -- Set to remove old nodes
-            if old ~= nil and old.done ~= parseCycle then
-                nodeToRemove = old
-            end
-
-            -- Add new nodes before processing children
-            if new ~= nil then
-                addElement(new, parent, newIndex)
-            end
-
+        -- We add nodes BEFORE processing children
+        elseif new ~= nil then
+            addElement(new, parent, index)
         end
 
-        -- Check if it is node with table
-        if  (old and type(old.value) == 'table') or 
-            (new and type(new.value) == 'table') then
-            
-            -- Find maximum
-            local max = findMaximum(old, new)
-            
-            -- Recursive search
-            for index = 1, max, 1 do
-                treeIterator(old, new, index)
-                if checkForEnd(old, new) then return end
-            end
+        -- Check for tables
+        local tableNodeFromNew = nil
+        local tableNodeFromOld = nil
+        if old and type(old.value) == 'table' and new and type(new.value) == 'table' then
+            -- Compare tables
+            tableNodeFromNew = new.value
+            tableNodeFromOld = old.value
 
+        elseif old and type(old.value) == 'table' then
+            -- Delete old nodes
+            tableNodeFromOld = old.value
+
+        elseif new and type(new.value) == 'table' then
+            -- Add new nodes
+            tableNodeFromNew = new.value
         end
 
-        -- We delete old nodes after processing children
-        if nodeToRemove ~= nil and nodeToRemove.done ~= parseCycle  then
-            removeElement(nodeToRemove, oldIndex)
+        -- Process childrens of tables
+        if tableNodeFromNew ~= nil or tableNodeFromOld ~= nil then
+            compareTables(tableNodeFromOld, tableNodeFromNew, new)
         end
 
-        -- Mark done flags
-        if old then old.done = parseCycle end
-        if new then new.done = parseCycle end
-
+        -- We delete old nodes AFTER processing children
+        if not nodesAreSame and old ~= nil then
+            removeElement(old)
+        end
     end
 
     ---------------------------------------------------------
-    local function startCoroutine(func, ...)
-        local createdCoroutine = coroutine.create(func)
-        coroutine.resume(createdCoroutine, ...)
-        return createdCoroutine
-    end
-
-    ---------------------------------------------------------
+    -- initialization of variables
     local file = assert(Files[name], 'No opened file: ' .. tostring(name))
     local oldTree = file.tree
     local newTree = file.grammar:match(text)
 
     if newTree == nil then
+
+        -- if grammar failed to parse whole tree, return error
         print 'Reparsing done with error!\n'
         return
+
+    else
+
+        -- when successful compare trees and set new tree
+        local rootOld = { table = { name='root' }, value = oldTree }
+        local rootNew = { table = { name='root' }, value = newTree }
+        compareTrees(rootOld, rootNew, 1, nil)
+
+        file.tree = newTree
+
+        print "Reparsing file done!\n"
+        return newTree
     end
-
-    parseCycle = parseCycle + 1
-    finishCompare = false
-    
-    local rootOld = { table = { name='root' }, value = oldTree }
-    local rootNew = { table = { name='root' }, value = newTree }
-
-    -- Create coroutine for front search
-    treeIterator = frontIterator
-    local compareFrontCoroutine = startCoroutine(compareTrees, rootOld, rootNew, 1, 1)
-
-    -- Create coroutine for back search
-    treeIterator = backIterator
-    local compareBackCoroutine = startCoroutine(compareTrees, rootOld, rootNew, 1, 1)
-
-    -- Search tree until finished
-    local frontCourotineFinished = false
-    local backCourotineFinished = false
-    while true do
-
-        treeIterator = frontIterator
-        if coroutine.resume(compareFrontCoroutine) == false then
-            frontCourotineFinished = true
-            if backCourotineFinished then break end
-        end
-
-        treeIterator = backIterator
-        if coroutine.resume(compareBackCoroutine) == false then
-            backCourotineFinished = true
-            if frontCourotineFinished then break end
-        end
-    end
-
-    file.tree = newTree
-    treeIterator = nil
-
-    print "Reparsing file done!\n"
-
-    return newTree
 end
 
 ------------------------------------------------------------------------------------------------------------------ ELEMENT HANDLING
@@ -516,46 +494,34 @@ end
 -- @param parent from new tree
 -- @param index from parent from new tree
 function addElement(element, parent, index)
-    
-    if element.done ~= parseCycle then
 
-        index = index - 1
+    -- Lua is indexing from 1, C++ from 0
+    index = index - 1
 
-        -- TODO formatovanie objektu
-        if element.type == 'node' then
-            element.instance = QT_addGrid(parent.instance, index )
-        elseif element.type == 'leaf' then
-            element.instance = QT_addItem(parent.instance, index , element.value)
-        end
-
-        print('ADD: {' .. tostring(element.instance) .. ' ' .. element.table.name .. ' "' .. tostring(element.value) 
-            .. '"} to parent {' .. tostring(parent.instance) .. ' ' .. tostring(parent and parent.table.name) .. '} at index ' .. tostring(index + 1))
-
-        element.done = parseCycle
+    -- TODO formatovanie objektu
+    if element.type == 'node' then
+        element.instance = QT_addGrid(parent.instance, index )
+    elseif element.type == 'leaf' then
+        element.instance = QT_addItem(parent.instance, index , element.value)
     end
+
+    print('ADD: {' .. tostring(element.instance) .. ' ' .. element.table.name .. ' "' .. tostring(element.value) 
+        .. '"} to parent {' .. tostring(parent.instance) .. ' ' .. tostring(parent and parent.table.name) .. '} at index ' .. tostring(index + 1))
 end
 
 ---------------------------------------------------------
 -- Removes element from OLD TREE
 -- @param item from old tree
 -- @param index from parent from old tree
-function removeElement(element, index)
-
-    if element.done ~= parseCycle then
-        print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"')
-        QT_removeElement(element.instance)
-        element.done = parseCycle
-    end
+function removeElement(element)
+    print('REMOVE: ' .. element.table.name .. ' "' .. tostring(element.value) .. '"')
+    QT_removeElement(element.instance)
 end
 
 ---------------------------------------------------------
-function updateElement(oldElement, newElement, oldIndex, newIndex)
-
-    if newElement.done ~= parseCycle then
-        print('UPDATE: ' .. tostring(newElement.instance) .. ' '  .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"')
-        QT_updateItem(newElement.instance, newElement.value)
-        newElement.done = parseCycle
-    end
+function updateElement(newElement, oldElement)
+    print('UPDATE: ' .. tostring(newElement.instance) .. ' ' .. oldElement.table.name .. ' "' .. oldElement.value .. '" to "' .. newElement.value .. '"')
+    QT_updateItem(newElement.instance, newElement.value)
 end
 
 ------------------------------------------------------------------------------------------------------------------ DEFAULT GRAMMAR

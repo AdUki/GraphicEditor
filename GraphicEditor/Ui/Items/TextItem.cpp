@@ -20,7 +20,6 @@ TextItem::TextItem(const QString& text, QGraphicsLayoutItem *parent)
 ////////////////////////////////////////////////////////////////
 TextItem::~TextItem()
 {
-    qDebug() << "~TextItem()";
 }
 
 ////////////////////////////////////////////////////////////////
@@ -34,6 +33,7 @@ void TextItem::setFont(const QFont &font)
 QSizeF TextItem::measureSize() const
 {
     QFontMetrics fm(_font);
+
     const QSizeF& size = fm.size(Qt::TextExpandTabs, _text);
     // NOTE: flag Qt::TextSingleLine ignores newline characters.
     return size;
